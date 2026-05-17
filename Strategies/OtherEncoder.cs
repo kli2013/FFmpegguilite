@@ -1,13 +1,20 @@
-public static class EncoderStrategyFactory
+using FFLiteGUI.Models;
+
+namespace FFLiteGUI.Strategies
 {
-    public static IEncoderStrategy GetStrategy(string encoder)
+    public class OtherEncoder : IEncoderStrategy
     {
-        if (encoder.Contains("libx") || encoder.Contains("libsvtav1"))
-            return new SoftwareEncoder();
-        if (encoder.Contains("nvenc"))
-            return new NVENCEncoder();
-        if (encoder.Contains("qsv"))
-            return new QSVEncoder();
-        return new OtherEncoder();
+        public string BuildVideoParams(VideoSettings settings)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            parts.Add($"-c:v {settings.Encoder}");
+            
+            string bitrate = settings.BitrateVideo.Trim();
+            if (int.TryParse(bitrate, out _))
+                bitrate += "k";
+            parts.Add($"-b:v {bitrate}");
+            
+            return string.Join(" ", parts);
+        }
     }
 }

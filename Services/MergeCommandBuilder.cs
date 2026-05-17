@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using FFLiteGUI.Models;
 using FFLiteGUI.Utils;
 
@@ -35,7 +34,6 @@ namespace FFLiteGUI.Services
             if (!enabledTracks.Any())
                 throw new InvalidOperationException("没有启用的轨道");
 
-            // 收集所有输入文件（去重）
             var inputFiles = new List<string>();
             foreach (var track in enabledTracks)
             {
@@ -47,14 +45,13 @@ namespace FFLiteGUI.Services
             args.Add("-y");
             args.Add("-fflags +genpts");
 
-            // 处理每个输入的截取参数（仅视频轨道）
             var fileTrim = new Dictionary<string, (string start, string end)>();
             foreach (var track in enabledTracks)
             {
                 if (track.Type == "video")
                 {
                     var settings = track.EncSettings;
-                    if (settings.TryGetValue("trim_enabled", out string trimEnabled) && trimEnabled == "True")
+                    if (settings.GetValueOrDefault("trim_enabled") == "True")
                     {
                         string start = settings.GetValueOrDefault("trim_start", "");
                         string end = settings.GetValueOrDefault("trim_end", "");
@@ -66,7 +63,6 @@ namespace FFLiteGUI.Services
                 }
             }
 
-            // 添加 -ss 和 -to 以及 -i 参数
             foreach (var file in inputFiles)
             {
                 if (fileTrim.TryGetValue(file, out var trim))
@@ -86,16 +82,12 @@ namespace FFLiteGUI.Services
             if (!videoTracks.Any())
                 throw new InvalidOperationException("没有启用的视频轨道");
 
-            // 获取输入文件索引映射
             var inputIndexMap = new Dictionary<string, int>();
             for (int i = 0; i < inputFiles.Count; i++)
-            {
                 inputIndexMap[inputFiles[i]] = i;
-            }
 
             if (pipEnabled)
             {
-                // 画中画模式：使用 filter_complex
                 var mainVideo = videoTracks[0];
                 var subVideos = videoTracks.Skip(1).ToList();
 
@@ -107,7 +99,6 @@ namespace FFLiteGUI.Services
                     filterParts.Add($"[{mainIdx}:v]{mainFilters}[v_main_proc]");
                     string currentV = "v_main_proc";
 
-                    // 主视频画布偏移
                     if (mainVideo.PadEnabled && !string.IsNullOrEmpty(mainVideo.PadWidth) && !string.IsNullOrEmpty(mainVideo.PadHeight))
                     {
                         string pw = mainVideo.PadWidth.Trim();
@@ -154,7 +145,6 @@ namespace FFLiteGUI.Services
                 }
                 else
                 {
-                    // 无滤镜情况
                     filterParts.Add($"[{mainIdx}:v]null[v_main_proc]");
                     string currentV = "v_main_proc";
                     for (int i = 0; i < subVideos.Count; i++)
@@ -174,7 +164,6 @@ namespace FFLiteGUI.Services
                     args.Add($"-map \"[{currentV}]\"");
                 }
 
-                // 视频编码参数
                 var vSettings = mainVideo.EncSettings;
                 string vcodec = vSettings.GetValueOrDefault("encoder", "libx265");
                 args.Add($"-c:v {vcodec}");
@@ -191,17 +180,16 @@ namespace FFLiteGUI.Services
                 else if (rc == "bitrate" && vSettings.TryGetValue("bitrate_video", out string bit))
                     args.Add($"-b:v {bit}");
 
-                if (vSettings.TryGetValue("frame_rate_type", out string fpsType) && fpsType == "custom" &&
+                if (vSettings.GetValueOrDefault("frame_rate_type") == "custom" &&
                     vSettings.TryGetValue("frame_rate_custom", out string fps))
                     args.Add($"-r {fps}");
 
-                if (vSettings.TryGetValue("pix_fmt_enabled", out string pixEnabled) && pixEnabled == "True" &&
+                if (vSettings.GetValueOrDefault("pix_fmt_enabled") == "True" &&
                     vSettings.TryGetValue("pix_fmt", out string pixFmt))
                     args.Add($"-pix_fmt {pixFmt}");
             }
             else
             {
-                // 非画中画模式：直接复制或编码第一个视频轨道
                 var videoTrack = videoTracks[0];
                 int vIdx = inputIndexMap[videoTrack.FilePath];
                 args.Add($"-map {vIdx}:v:0");
@@ -228,17 +216,16 @@ namespace FFLiteGUI.Services
                     else if (rc == "bitrate" && vSettings.TryGetValue("bitrate_video", out string bit))
                         args.Add($"-b:v {bit}");
 
-                    if (vSettings.TryGetValue("frame_rate_type", out string fpsType) && fpsType == "custom" &&
+                    if (vSettings.GetValueOrDefault("frame_rate_type") == "custom" &&
                         vSettings.TryGetValue("frame_rate_custom", out string fps))
                         args.Add($"-r {fps}");
 
-                    if (vSettings.TryGetValue("pix_fmt_enabled", out string pixEnabled) && pixEnabled == "True" &&
+                    if (vSettings.GetValueOrDefault("pix_fmt_enabled") == "True" &&
                         vSettings.TryGetValue("pix_fmt", out string pixFmt))
                         args.Add($"-pix_fmt {pixFmt}");
                 }
             }
 
-            // 处理音频轨道
             int audioMapCount = 0;
             foreach (var audio in audioTracks)
             {
@@ -262,7 +249,6 @@ namespace FFLiteGUI.Services
             if (audioMapCount == 0)
                 args.Add("-an");
 
-            // 处理字幕轨道
             int subMapCount = 0;
             bool firstSubDefault = false;
             foreach (var sub in subtitleTracks)
@@ -277,14 +263,10 @@ namespace FFLiteGUI.Services
                     {
                         string origCodec = sub.Codec?.ToLower() ?? "";
                         if (origCodec != "mov_text" && origCodec != "mp4s")
-                        {
                             enc = "mov_text";
-                        }
                     }
                     else if (enc != "mov_text" && enc != "mp4s")
-                    {
                         enc = "mov_text";
-                    }
                 }
 
                 args.Add($"-map {sIdx}:s:0");
@@ -297,49 +279,37 @@ namespace FFLiteGUI.Services
                 subMapCount++;
             }
 
-            // 章节处理
             if (copyChapters && inputFiles.Any())
-            {
                 args.Add("-map_chapters 0");
-            }
 
             if (!string.IsNullOrEmpty(chapterFile) && File.Exists(chapterFile))
             {
                 string chapterFileNorm = PathHelper.Normalize(chapterFile);
-                // 章节文件作为额外的输入插入到最前面（索引1）
                 args.Insert(1, "-i");
                 args.Insert(2, $"\"{chapterFileNorm}\"");
                 args.Add("-map_chapters 1");
             }
 
-            // 容器优化
             if (container.ToLower() == "mp4" || container.ToLower() == "mov")
-            {
                 args.Add("-movflags +faststart");
-            }
 
             args.Add($"\"{PathHelper.Normalize(outputPath)}\"");
-
             return $"\"{_ffmpegPath}\" {string.Join(" ", args)}";
         }
 
         private string BuildVideoFilterChain(Dictionary<string, string> settings)
         {
             var filters = new List<string>();
-
-            if (settings.TryGetValue("crop_enabled", out string cropEnabled) && cropEnabled == "True")
+            if (settings.GetValueOrDefault("crop_enabled") == "True")
             {
                 string w = settings.GetValueOrDefault("crop_width", "").Trim();
                 string h = settings.GetValueOrDefault("crop_height", "").Trim();
                 string left = settings.GetValueOrDefault("crop_left", "0").Trim();
                 string top = settings.GetValueOrDefault("crop_top", "0").Trim();
                 if (!string.IsNullOrEmpty(w) && !string.IsNullOrEmpty(h))
-                {
                     filters.Add($"crop={w}:{h}:{left}:{top}");
-                }
             }
-
-            if (settings.TryGetValue("scale_enabled", out string scaleEnabled) && scaleEnabled == "True")
+            if (settings.GetValueOrDefault("scale_enabled") == "True")
             {
                 string method = settings.GetValueOrDefault("scale_method", "width");
                 string w = settings.GetValueOrDefault("scale_width", "").Trim();
@@ -351,7 +321,6 @@ namespace FFLiteGUI.Services
                 else if (method == "exact" && !string.IsNullOrEmpty(w) && !string.IsNullOrEmpty(h))
                     filters.Add($"scale={w}:{h}");
             }
-
             string rotate = settings.GetValueOrDefault("rotate", "none");
             if (rotate == "90")
                 filters.Add("transpose=1");
@@ -359,16 +328,13 @@ namespace FFLiteGUI.Services
                 filters.Add("transpose=2,transpose=2");
             else if (rotate == "270")
                 filters.Add("transpose=2");
-
-            if (settings.TryGetValue("vflip", out string vflip) && vflip == "True")
+            if (settings.GetValueOrDefault("vflip") == "True")
                 filters.Add("vflip");
-            if (settings.TryGetValue("hflip", out string hflip) && hflip == "True")
+            if (settings.GetValueOrDefault("hflip") == "True")
                 filters.Add("hflip");
-
             string deint = settings.GetValueOrDefault("deinterlace_filter", "none");
             if (deint != "none")
                 filters.Add(deint);
-
             return filters.Any() ? string.Join(",", filters) : "null";
         }
     }

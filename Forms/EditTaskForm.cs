@@ -1,9 +1,9 @@
+// Forms\EditTaskForm.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using FFLiteGUI.Models;
 using FFLiteGUI.Services;
@@ -14,16 +14,17 @@ namespace FFLiteGUI.Forms
     public partial class EditTaskForm : Form
     {
         private readonly TaskInfo _task;
-        private readonly VideoSettings _originalSettings;
+        private readonly string _ffmpegPath;
+        private VideoSettings _originalSettings;
         private readonly string _inputFile;
-        private readonly FFmpegCommandBuilder _commandBuilder;
+
+        // 控件
         private TabControl _tabControl;
         private TextBox _outputDirTextBox;
         private TextBox _suffixTextBox;
         private TextBox _customNameTextBox;
         private ComboBox _containerComboBox;
 
-        // 视频编码控件
         private ComboBox _encoderComboBox;
         private ComboBox _presetComboBox;
         private RadioButton _crfRadio;
@@ -41,7 +42,8 @@ namespace FFLiteGUI.Forms
         private ComboBox _hwaccelDecoderComboBox;
         private TextBox _customArgsTextBox;
 
-        // 视频滤镜控件 (缩放/裁剪/旋转等)
+        private ComboBox _frameRateTypeComboBox;
+        private TextBox _frameRateCustomTextBox;
         private CheckBox _scaleCheckBox;
         private ComboBox _scaleMethodComboBox;
         private TextBox _scaleWidthTextBox;
@@ -65,10 +67,7 @@ namespace FFLiteGUI.Forms
         private CheckBox _trimCheckBox;
         private TextBox _trimStartTextBox;
         private TextBox _trimEndTextBox;
-        private ComboBox _frameRateTypeComboBox;
-        private TextBox _frameRateCustomTextBox;
 
-        // 音频控件
         private CheckBox _audioEnabledCheckBox;
         private ComboBox _audioCodecComboBox;
         private TextBox _audioBitrateTextBox;
@@ -76,21 +75,20 @@ namespace FFLiteGUI.Forms
         private CheckBox _onlyAudioCheckBox;
         private ComboBox _audioFormatComboBox;
 
-        // 命令预览
         private RichTextBox _previewTextBox;
 
         public EditTaskForm(TaskInfo task, string ffmpegPath)
         {
             _task = task;
+            _ffmpegPath = ffmpegPath;
             _originalSettings = DeepCopy(task.Settings);
             _inputFile = task.InputFile;
-            _commandBuilder = new FFmpegCommandBuilder(ffmpegPath);
-            InitializeComponents();
+            InitializeComponent();
             LoadSettingsIntoUI();
             UpdateCommandPreview();
         }
 
-        private void InitializeComponents()
+        private void InitializeComponent()
         {
             this.Text = $"编辑任务 - {Path.GetFileName(_inputFile)}";
             this.Size = new Size(1100, 700);
@@ -98,16 +96,13 @@ namespace FFLiteGUI.Forms
             this.MinimumSize = new Size(900, 600);
 
             _tabControl = new TabControl { Dock = DockStyle.Fill };
-
-            // 创建各个标签页
             _tabControl.TabPages.Add(CreateIoPage());
             _tabControl.TabPages.Add(CreateVideoEncodingPage());
             _tabControl.TabPages.Add(CreateVideoFiltersPage());
             _tabControl.TabPages.Add(CreateAudioPage());
 
-            // 命令预览区域 (放在底部)
             var previewGroup = new GroupBox { Text = "新命令预览", Dock = DockStyle.Bottom, Height = 150 };
-            _previewTextBox = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9) };
+            _previewTextBox = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9), BackColor = Color.LightYellow };
             previewGroup.Controls.Add(_previewTextBox);
 
             var mainPanel = new Panel { Dock = DockStyle.Fill };
@@ -115,7 +110,6 @@ namespace FFLiteGUI.Forms
             mainPanel.Controls.Add(previewGroup);
             previewGroup.BringToFront();
 
-            // 底部按钮
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
@@ -142,29 +136,28 @@ namespace FFLiteGUI.Forms
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            // 输出目录
             layout.Controls.Add(new Label { Text = "输出目录:", TextAlign = ContentAlignment.MiddleRight }, 0, 0);
             _outputDirTextBox = new TextBox { Dock = DockStyle.Fill };
             layout.Controls.Add(_outputDirTextBox, 1, 0);
             var browseDirBtn = new Button { Text = "浏览", Width = 70 };
-            browseDirBtn.Click += (s, e) => { var dlg = new FolderBrowserDialog(); if (dlg.ShowDialog() == DialogResult.OK) _outputDirTextBox.Text = PathHelper.Normalize(dlg.SelectedPath); };
+            browseDirBtn.Click += (s, e) => { var dlg = new FolderBrowserDialog(); if (dlg.ShowDialog() == DialogResult.OK) _outputDirTextBox.Text = PathHelper.Normalize(dlg.SelectedPath); UpdateCommandPreview(); };
             layout.Controls.Add(browseDirBtn, 2, 0);
 
-            // 文件名后缀
             layout.Controls.Add(new Label { Text = "文件名后缀:", TextAlign = ContentAlignment.MiddleRight }, 0, 1);
             _suffixTextBox = new TextBox { Dock = DockStyle.Fill };
             layout.Controls.Add(_suffixTextBox, 1, 1);
+            layout.Controls.Add(new Panel(), 2, 1);
 
-            // 自定义完整名称
             layout.Controls.Add(new Label { Text = "自定义完整名称:", TextAlign = ContentAlignment.MiddleRight }, 0, 2);
             _customNameTextBox = new TextBox { Dock = DockStyle.Fill };
             layout.Controls.Add(_customNameTextBox, 1, 2);
+            layout.Controls.Add(new Panel(), 2, 2);
 
-            // 输出容器
             layout.Controls.Add(new Label { Text = "输出容器:", TextAlign = ContentAlignment.MiddleRight }, 0, 3);
             _containerComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
             _containerComboBox.Items.AddRange(new[] { "mp4", "mkv", "mov", "avi", "webm" });
             layout.Controls.Add(_containerComboBox, 1, 3);
+            layout.Controls.Add(new Panel(), 2, 3);
 
             page.Controls.Add(layout);
             return page;
@@ -177,7 +170,6 @@ namespace FFLiteGUI.Forms
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
 
-            // 左侧：编码器、预设、码率控制
             var leftGroup = new GroupBox { Text = "编码参数", Dock = DockStyle.Fill };
             var leftLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 5, ColumnCount = 2, Padding = new Padding(5) };
             leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -186,41 +178,59 @@ namespace FFLiteGUI.Forms
             leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            // 编码器
-            leftLayout.Controls.Add(new Label { Text = "编码器:", TextAlign = ContentAlignment.MiddleRight }, 0, 0);
+            int row = 0;
+            leftLayout.Controls.Add(new Label { Text = "编码器:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _encoderComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
             _encoderComboBox.Items.AddRange(new[] { "libx264", "libx265", "libvpx-vp9", "libsvtav1", "mpeg4", "libxvid", "libtheora",
                 "h264_nvenc", "hevc_nvenc", "av1_nvenc", "h264_qsv", "hevc_qsv", "av1_qsv",
                 "h264_amf", "hevc_amf", "av1_amf", "h264_vaapi", "hevc_vaapi", "copy" });
             _encoderComboBox.SelectedIndexChanged += (s, e) => OnEncoderChanged();
-            leftLayout.Controls.Add(_encoderComboBox, 1, 0);
+            leftLayout.Controls.Add(_encoderComboBox, 1, row++);
 
-            // 预设
-            leftLayout.Controls.Add(new Label { Text = "编码预设:", TextAlign = ContentAlignment.MiddleRight }, 0, 1);
+            leftLayout.Controls.Add(new Label { Text = "编码预设:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _presetComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             _presetComboBox.Items.AddRange(new[] { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "p1", "p2", "p3", "p4", "p5", "p6", "p7" });
-            leftLayout.Controls.Add(_presetComboBox, 1, 1);
+            leftLayout.Controls.Add(_presetComboBox, 1, row++);
 
-            // 码率控制类型
-            leftLayout.Controls.Add(new Label { Text = "码率控制:", TextAlign = ContentAlignment.MiddleRight }, 0, 2);
+            leftLayout.Controls.Add(new Label { Text = "码率控制:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             var rcPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight };
             _crfRadio = new RadioButton { Text = "CRF (CPU)", AutoSize = true };
             _cqRadio = new RadioButton { Text = "CQ (NVENC)", AutoSize = true };
             _globalQualityRadio = new RadioButton { Text = "Global Quality (QSV)", AutoSize = true };
             _bitrateRadio = new RadioButton { Text = "固定比特率", AutoSize = true };
             rcPanel.Controls.AddRange(new Control[] { _crfRadio, _cqRadio, _globalQualityRadio, _bitrateRadio });
-            leftLayout.Controls.Add(rcPanel, 1, 2);
+            leftLayout.Controls.Add(rcPanel, 1, row++);
 
-            // 动态控制区域 (CRF滑块等)
             var dynamicPanel = new Panel { Dock = DockStyle.Fill };
-            leftLayout.Controls.Add(dynamicPanel, 1, 3);
+            leftLayout.Controls.Add(dynamicPanel, 1, row);
             leftLayout.SetRowSpan(dynamicPanel, 2);
-            CreateDynamicControls(dynamicPanel);
+
+            _crfTrackBar = new TrackBar { Minimum = 0, Maximum = 51, Value = 25, TickFrequency = 5, Width = 200 };
+            _crfLabel = new Label { Text = "25", Width = 30 };
+            _cqTrackBar = new TrackBar { Minimum = 0, Maximum = 51, Value = 35, TickFrequency = 5, Width = 200 };
+            _cqLabel = new Label { Text = "35", Width = 30 };
+            _gqTrackBar = new TrackBar { Minimum = 1, Maximum = 51, Value = 25, TickFrequency = 5, Width = 200 };
+            _gqLabel = new Label { Text = "25", Width = 30 };
+            _bitrateTextBox = new TextBox { Text = "1900k", Width = 100 };
+
+            var crfPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "CRF (0~51):" }, _crfTrackBar, _crfLabel }, Visible = true };
+            var cqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "CQ (0~51):" }, _cqTrackBar, _cqLabel }, Visible = false };
+            var gqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "Global Quality (1~51):" }, _gqTrackBar, _gqLabel }, Visible = false };
+            var bitPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "比特率 (kbps):" }, _bitrateTextBox }, Visible = false };
+            dynamicPanel.Controls.AddRange(new Control[] { crfPanel, cqPanel, gqPanel, bitPanel });
+
+            _crfRadio.CheckedChanged += (s, e) => { crfPanel.Visible = _crfRadio.Checked; UpdateCommandPreview(); };
+            _cqRadio.CheckedChanged += (s, e) => { cqPanel.Visible = _cqRadio.Checked; UpdateCommandPreview(); };
+            _globalQualityRadio.CheckedChanged += (s, e) => { gqPanel.Visible = _globalQualityRadio.Checked; UpdateCommandPreview(); };
+            _bitrateRadio.CheckedChanged += (s, e) => { bitPanel.Visible = _bitrateRadio.Checked; UpdateCommandPreview(); };
+            _crfTrackBar.ValueChanged += (s, e) => { _crfLabel.Text = _crfTrackBar.Value.ToString(); UpdateCommandPreview(); };
+            _cqTrackBar.ValueChanged += (s, e) => { _cqLabel.Text = _cqTrackBar.Value.ToString(); UpdateCommandPreview(); };
+            _gqTrackBar.ValueChanged += (s, e) => { _gqLabel.Text = _gqTrackBar.Value.ToString(); UpdateCommandPreview(); };
+            _bitrateTextBox.TextChanged += (s, e) => UpdateCommandPreview();
 
             leftGroup.Controls.Add(leftLayout);
             mainLayout.Controls.Add(leftGroup, 0, 0);
 
-            // 右侧：高级选项（硬件解码/自定义参数）
             var rightGroup = new GroupBox { Text = "高级选项 (硬件解码/自定义参数)", Dock = DockStyle.Fill };
             var rightLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(5) };
             rightLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -229,13 +239,17 @@ namespace FFLiteGUI.Forms
 
             var hwPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight };
             _hwaccelCheckBox = new CheckBox { Text = "启用硬件解码", AutoSize = true };
-            _hwaccelDecoderComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
-            _hwaccelDecoderComboBox.Items.AddRange(new[] { "无", "auto (自动通用)", "cuda (NVIDIA通用)", "h264_cuvid", "hevc_cuvid", "vp9_cuvid", "av1_cuvid", "qsv (Intel通用)", "h264_qsv", "hevc_qsv", "vaapi", "videotoolbox" });
+            _hwaccelDecoderComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, Enabled = false };
+            _hwaccelDecoderComboBox.Items.AddRange(HardwareDecoderHelper.GetDecoderOptions());
+            _hwaccelDecoderComboBox.SelectedIndex = 0;
+            _hwaccelCheckBox.CheckedChanged += (s, e) => { _hwaccelDecoderComboBox.Enabled = _hwaccelCheckBox.Checked; if (_hwaccelCheckBox.Checked && _hwaccelDecoderComboBox.SelectedIndex < 0) _hwaccelDecoderComboBox.SelectedIndex = 1; UpdateCommandPreview(); };
+            _hwaccelDecoderComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             hwPanel.Controls.AddRange(new Control[] { _hwaccelCheckBox, _hwaccelDecoderComboBox });
             rightLayout.Controls.Add(hwPanel, 0, 0);
 
             rightLayout.Controls.Add(new Label { Text = "自定义FFmpeg参数 (例如: -tune grain -profile:v high):", AutoSize = true }, 0, 1);
             _customArgsTextBox = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 60 };
+            _customArgsTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             rightLayout.Controls.Add(_customArgsTextBox, 0, 2);
 
             rightGroup.Controls.Add(rightLayout);
@@ -245,59 +259,10 @@ namespace FFLiteGUI.Forms
             return page;
         }
 
-        private void CreateDynamicControls(Panel container)
-        {
-            // CRF 滑块
-            var crfPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Visible = true };
-            crfPanel.Controls.Add(new Label { Text = "CRF (0~51):", AutoSize = true });
-            _crfTrackBar = new TrackBar { Minimum = 0, Maximum = 51, Value = 25, TickFrequency = 5, Width = 300 };
-            _crfLabel = new Label { Text = "25", Width = 30 };
-            crfPanel.Controls.AddRange(new Control[] { _crfTrackBar, _crfLabel });
-            _crfTrackBar.ValueChanged += (s, e) => _crfLabel.Text = _crfTrackBar.Value.ToString();
-
-            // CQ 滑块
-            var cqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Visible = false };
-            cqPanel.Controls.Add(new Label { Text = "CQ (0~51):", AutoSize = true });
-            _cqTrackBar = new TrackBar { Minimum = 0, Maximum = 51, Value = 35, TickFrequency = 5, Width = 300 };
-            _cqLabel = new Label { Text = "35", Width = 30 };
-            cqPanel.Controls.AddRange(new Control[] { _cqTrackBar, _cqLabel });
-            _cqTrackBar.ValueChanged += (s, e) => _cqLabel.Text = _cqTrackBar.Value.ToString();
-
-            // Global Quality 滑块
-            var gqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Visible = false };
-            gqPanel.Controls.Add(new Label { Text = "Global Quality (1~51):", AutoSize = true });
-            _gqTrackBar = new TrackBar { Minimum = 1, Maximum = 51, Value = 25, TickFrequency = 5, Width = 300 };
-            _gqLabel = new Label { Text = "25", Width = 30 };
-            gqPanel.Controls.AddRange(new Control[] { _gqTrackBar, _gqLabel });
-            _gqTrackBar.ValueChanged += (s, e) => _gqLabel.Text = _gqTrackBar.Value.ToString();
-
-            // 比特率输入框
-            var bitratePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Visible = false };
-            bitratePanel.Controls.Add(new Label { Text = "比特率 (kbps):", AutoSize = true });
-            _bitrateTextBox = new TextBox { Text = "1900k", Width = 100 };
-            bitratePanel.Controls.Add(_bitrateTextBox);
-
-            container.Controls.Clear();
-            container.Controls.AddRange(new Control[] { crfPanel, cqPanel, gqPanel, bitratePanel });
-
-            // 绑定 RadioButton 切换
-            _crfRadio.CheckedChanged += (s, e) => { if (_crfRadio.Checked) SwitchDynamicPanel(crfPanel); UpdateCommandPreview(); };
-            _cqRadio.CheckedChanged += (s, e) => { if (_cqRadio.Checked) SwitchDynamicPanel(cqPanel); UpdateCommandPreview(); };
-            _globalQualityRadio.CheckedChanged += (s, e) => { if (_globalQualityRadio.Checked) SwitchDynamicPanel(gqPanel); UpdateCommandPreview(); };
-            _bitrateRadio.CheckedChanged += (s, e) => { if (_bitrateRadio.Checked) SwitchDynamicPanel(bitratePanel); UpdateCommandPreview(); };
-        }
-
-        private void SwitchDynamicPanel(Panel activePanel)
-        {
-            foreach (Control ctrl in activePanel.Parent.Controls)
-                if (ctrl is FlowLayoutPanel panel)
-                    panel.Visible = (panel == activePanel);
-        }
-
         private TabPage CreateVideoFiltersPage()
         {
             var page = new TabPage("视频滤镜");
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 10, Padding = new Padding(5), AutoSize = true };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 12, Padding = new Padding(5), AutoSize = true };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
@@ -308,35 +273,39 @@ namespace FFLiteGUI.Forms
             _frameRateTypeComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
             _frameRateTypeComboBox.Items.AddRange(new[] { "保持源", "指定" });
             _frameRateCustomTextBox = new TextBox { Text = "30", Width = 50, Enabled = false };
-            _frameRateTypeComboBox.SelectedIndexChanged += (s, e) => _frameRateCustomTextBox.Enabled = (_frameRateTypeComboBox.SelectedIndex == 1);
+            _frameRateTypeComboBox.SelectedIndexChanged += (s, e) => { _frameRateCustomTextBox.Enabled = _frameRateTypeComboBox.SelectedIndex == 1; UpdateCommandPreview(); };
+            _frameRateCustomTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             fpsPanel.Controls.AddRange(new Control[] { _frameRateTypeComboBox, _frameRateCustomTextBox, new Label { Text = "fps" } });
             layout.Controls.Add(fpsPanel, 1, row++);
 
             // 缩放
             _scaleCheckBox = new CheckBox { Text = "启用缩放", AutoSize = true };
+            _scaleCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_scaleCheckBox, 0, row);
             var scalePanel = new FlowLayoutPanel();
-            _scaleMethodComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
+            _scaleMethodComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             _scaleMethodComboBox.Items.AddRange(new[] { "宽度(高度自动)", "高度(宽度自动)", "精确宽×高" });
             _scaleWidthTextBox = new TextBox { Width = 50 };
             _scaleHeightTextBox = new TextBox { Width = 50, Enabled = false };
-            _scaleMethodComboBox.SelectedIndexChanged += (s, e) =>
-            {
-                bool exact = _scaleMethodComboBox.SelectedIndex == 2;
-                _scaleHeightTextBox.Enabled = exact;
-                if (!exact) _scaleHeightTextBox.Text = "";
-            };
+            _scaleMethodComboBox.SelectedIndexChanged += (s, e) => { _scaleHeightTextBox.Enabled = _scaleMethodComboBox.SelectedIndex == 2; UpdateCommandPreview(); };
+            _scaleWidthTextBox.TextChanged += (s, e) => UpdateCommandPreview();
+            _scaleHeightTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             scalePanel.Controls.AddRange(new Control[] { _scaleMethodComboBox, new Label { Text = "宽:" }, _scaleWidthTextBox, new Label { Text = "高:" }, _scaleHeightTextBox });
             layout.Controls.Add(scalePanel, 1, row++);
 
             // 裁剪
             _cropCheckBox = new CheckBox { Text = "启用裁剪", AutoSize = true };
+            _cropCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_cropCheckBox, 0, row);
             var cropPanel = new FlowLayoutPanel();
             _cropWidthTextBox = new TextBox { Width = 60 };
             _cropHeightTextBox = new TextBox { Width = 60 };
             _cropLeftTextBox = new TextBox { Width = 50 };
             _cropTopTextBox = new TextBox { Width = 50 };
+            _cropWidthTextBox.TextChanged += (s, e) => UpdateCommandPreview();
+            _cropHeightTextBox.TextChanged += (s, e) => UpdateCommandPreview();
+            _cropLeftTextBox.TextChanged += (s, e) => UpdateCommandPreview();
+            _cropTopTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             cropPanel.Controls.AddRange(new Control[] { new Label { Text = "宽:" }, _cropWidthTextBox, new Label { Text = "高:" }, _cropHeightTextBox,
                 new Label { Text = "左:" }, _cropLeftTextBox, new Label { Text = "上:" }, _cropTopTextBox });
             layout.Controls.Add(cropPanel, 1, row++);
@@ -345,21 +314,26 @@ namespace FFLiteGUI.Forms
             layout.Controls.Add(new Label { Text = "旋转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _rotateComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             _rotateComboBox.Items.AddRange(new[] { "无", "90°顺时针", "180°", "90°逆时针" });
+            _rotateComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_rotateComboBox, 1, row++);
 
             // 翻转
+            var flipPanel = new FlowLayoutPanel();
             _vflipCheckBox = new CheckBox { Text = "上下翻转", AutoSize = true };
             _hflipCheckBox = new CheckBox { Text = "左右翻转", AutoSize = true };
-            var flipPanel = new FlowLayoutPanel();
+            _vflipCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
+            _hflipCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             flipPanel.Controls.AddRange(new Control[] { _vflipCheckBox, _hflipCheckBox });
             layout.Controls.Add(new Label { Text = "翻转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             layout.Controls.Add(flipPanel, 1, row++);
 
             // 变速
             _speedCheckBox = new CheckBox { Text = "启用变速", AutoSize = true };
+            _speedCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_speedCheckBox, 0, row);
             var speedPanel = new FlowLayoutPanel();
             _speedFactorTextBox = new TextBox { Text = "1.0", Width = 60 };
+            _speedFactorTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             speedPanel.Controls.AddRange(new Control[] { new Label { Text = "速度倍数 (0.5慢,2.0快):" }, _speedFactorTextBox });
             layout.Controls.Add(speedPanel, 1, row++);
 
@@ -367,35 +341,40 @@ namespace FFLiteGUI.Forms
             layout.Controls.Add(new Label { Text = "反交错:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _deinterlaceComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             _deinterlaceComboBox.Items.AddRange(new[] { "none", "bwdif", "yadif", "kerndeint", "pp=lb", "fieldorder" });
+            _deinterlaceComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_deinterlaceComboBox, 1, row++);
 
             // 像素格式
             _pixFmtCheckBox = new CheckBox { Text = "指定像素格式", AutoSize = true };
+            _pixFmtCheckBox.CheckedChanged += (s, e) => { _pixFmtComboBox.Enabled = _pixFmtCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_pixFmtCheckBox, 0, row);
             _pixFmtComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Enabled = false };
             _pixFmtComboBox.Items.AddRange(new[] { "yuv420p", "yuv422p", "yuv444p", "yuv420p10le", "yuv422p10le", "yuv444p10le", "p010le", "nv12" });
-            _pixFmtCheckBox.CheckedChanged += (s, e) => _pixFmtComboBox.Enabled = _pixFmtCheckBox.Checked;
+            _pixFmtComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_pixFmtComboBox, 1, row++);
 
             // 烧录字幕
             _subtitleCheckBox = new CheckBox { Text = "烧录字幕", AutoSize = true };
+            _subtitleCheckBox.CheckedChanged += (s, e) => { _subtitlePathTextBox.Enabled = _subtitleCheckBox.Checked; _browseSubtitleButton.Enabled = _subtitleCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_subtitleCheckBox, 0, row);
             var subPanel = new FlowLayoutPanel();
             _subtitlePathTextBox = new TextBox { Width = 250, Enabled = false };
+            _subtitlePathTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             _browseSubtitleButton = new Button { Text = "浏览...", Enabled = false };
-            _browseSubtitleButton.Click += (s, e) => { var dlg = new OpenFileDialog { Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt"; if (dlg.ShowDialog() == DialogResult.OK) _subtitlePathTextBox.Text = PathHelper.Normalize(dlg.FileName); } };
+            _browseSubtitleButton.Click += (s, e) => { var dlg = new OpenFileDialog { Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt"; if (dlg.ShowDialog() == DialogResult.OK) { _subtitlePathTextBox.Text = PathHelper.Normalize(dlg.FileName); UpdateCommandPreview(); } } };
             subPanel.Controls.AddRange(new Control[] { _subtitlePathTextBox, _browseSubtitleButton });
-            _subtitleCheckBox.CheckedChanged += (s, e) => { _subtitlePathTextBox.Enabled = _subtitleCheckBox.Checked; _browseSubtitleButton.Enabled = _subtitleCheckBox.Checked; };
             layout.Controls.Add(subPanel, 1, row++);
 
             // 截取片段
             _trimCheckBox = new CheckBox { Text = "启用截取片段", AutoSize = true };
+            _trimCheckBox.CheckedChanged += (s, e) => { _trimStartTextBox.Enabled = _trimCheckBox.Checked; _trimEndTextBox.Enabled = _trimCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_trimCheckBox, 0, row);
             var trimPanel = new FlowLayoutPanel();
             _trimStartTextBox = new TextBox { Width = 100, Enabled = false };
             _trimEndTextBox = new TextBox { Width = 100, Enabled = false };
+            _trimStartTextBox.TextChanged += (s, e) => UpdateCommandPreview();
+            _trimEndTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             trimPanel.Controls.AddRange(new Control[] { new Label { Text = "开始:" }, _trimStartTextBox, new Label { Text = "结束:" }, _trimEndTextBox });
-            _trimCheckBox.CheckedChanged += (s, e) => { _trimStartTextBox.Enabled = _trimCheckBox.Checked; _trimEndTextBox.Enabled = _trimCheckBox.Checked; };
             layout.Controls.Add(trimPanel, 1, row++);
 
             page.Controls.Add(layout);
@@ -410,30 +389,36 @@ namespace FFLiteGUI.Forms
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             int row = 0;
-            _audioEnabledCheckBox = new CheckBox { Text = "保留音频", AutoSize = true };
+            _audioEnabledCheckBox = new CheckBox { Text = "保留音频", AutoSize = true, Checked = true };
+            _audioEnabledCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_audioEnabledCheckBox, 0, row);
-            layout.Controls.Add(new Panel(), 1, row++); // 占位
+            layout.Controls.Add(new Panel(), 1, row++);
 
             _onlyAudioCheckBox = new CheckBox { Text = "仅提取音频", AutoSize = true };
+            _onlyAudioCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_onlyAudioCheckBox, 0, row);
             var formatPanel = new FlowLayoutPanel();
             formatPanel.Controls.Add(new Label { Text = "输出容器:" });
             _audioFormatComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 60 };
             _audioFormatComboBox.Items.AddRange(new[] { "mp3", "aac", "m4a", "flac", "opus", "wav", "ac3" });
+            _audioFormatComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             formatPanel.Controls.Add(_audioFormatComboBox);
             layout.Controls.Add(formatPanel, 1, row++);
 
             layout.Controls.Add(new Label { Text = "编码器:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _audioCodecComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             _audioCodecComboBox.Items.AddRange(new[] { "aac", "libmp3lame", "opus", "ac3", "flac", "alac", "pcm_s16le", "copy" });
+            _audioCodecComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_audioCodecComboBox, 1, row++);
 
             layout.Controls.Add(new Label { Text = "比特率:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _audioBitrateTextBox = new TextBox { Text = "128k", Width = 80 };
+            _audioBitrateTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_audioBitrateTextBox, 1, row++);
 
             layout.Controls.Add(new Label { Text = "采样率:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _audioSamplerateTextBox = new TextBox { Text = "44100", Width = 80 };
+            _audioSamplerateTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_audioSamplerateTextBox, 1, row++);
 
             page.Controls.Add(layout);
@@ -510,16 +495,16 @@ namespace FFLiteGUI.Forms
                 _globalQualityRadio.Checked = true;
             else
                 _bitrateRadio.Checked = true;
-            UpdateCommandPreview();
         }
 
         private void UpdateCommandPreview()
         {
             var newSettings = CollectSettings();
             string outputPath = GenerateOutputPath(newSettings);
+            var builder = new FFmpegCommandBuilder(_ffmpegPath);
             try
             {
-                string cmd = _commandBuilder.BuildCommand(_inputFile, outputPath, newSettings);
+                string cmd = builder.BuildCommand(_inputFile, outputPath, newSettings);
                 _previewTextBox.Text = cmd;
             }
             catch (Exception ex)
@@ -589,8 +574,7 @@ namespace FFLiteGUI.Forms
             string custom = settings.CustomOutputName?.Trim();
             if (!string.IsNullOrEmpty(custom))
             {
-                string ext = Path.GetExtension(custom);
-                if (string.IsNullOrEmpty(ext)) custom += "." + container;
+                if (!Path.HasExtension(custom)) custom += "." + container;
                 return PathHelper.Normalize(Path.Combine(dir, custom));
             }
             string suffix = settings.OutputSuffix?.Trim();
@@ -612,7 +596,8 @@ namespace FFLiteGUI.Forms
             string newOutput = GenerateOutputPath(newSettings);
             try
             {
-                string cmd = _commandBuilder.BuildCommand(_inputFile, newOutput, newSettings);
+                var builder = new FFmpegCommandBuilder(_ffmpegPath);
+                string cmd = builder.BuildCommand(_inputFile, newOutput, newSettings);
                 _task.Settings = newSettings;
                 _task.OutputFile = newOutput;
                 _task.Command = cmd;
@@ -628,7 +613,6 @@ namespace FFLiteGUI.Forms
 
         private VideoSettings DeepCopy(VideoSettings original)
         {
-            // 简单序列化深拷贝 (需引用 Newtonsoft.Json)
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(original);
             return Newtonsoft.Json.JsonConvert.DeserializeObject<VideoSettings>(json);
         }

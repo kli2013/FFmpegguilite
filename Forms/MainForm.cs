@@ -86,7 +86,7 @@ namespace FFLiteGUI.Forms
 
         // 后端字段
         private string _ffmpegPath;
-        private List<TaskInfo> _tasks = new List<TaskInfo>();
+        private List<TaskInfo> _tasks = new List<TaskInfo>(); // <-- 修正：添加泛型类型
         private bool _isProcessing;
         private CancellationTokenSource _cts;
         private SemaphoreSlim _hwSemaphore;
@@ -195,12 +195,12 @@ namespace FFLiteGUI.Forms
             presetGroup.Controls.Add(presetLayout);
             leftPanel.Controls.Add(presetGroup, 0, 1);
 
-            // ----- 主要参数标签页（视频编码 / 视频滤镜 / 音频 / 封装合并）-----
+            // ----- 主要参数标签页 -----
             var paramTab = new TabControl { Dock = DockStyle.Fill };
             paramTab.TabPages.Add(CreateVideoEncodingTab());
             paramTab.TabPages.Add(CreateVideoFiltersTab());
             paramTab.TabPages.Add(CreateAudioTab());
-            paramTab.TabPages.Add(CreateMergeTab());   // 新增封装/合并/画中画标签页
+            paramTab.TabPages.Add(CreateMergeTab());
             leftPanel.Controls.Add(paramTab, 0, 2);
 
             // ----- 底部按钮区域 -----
@@ -462,16 +462,13 @@ namespace FFLiteGUI.Forms
             cboScaleMethod.SelectedIndexChanged += (s, e) =>
             {
                 int idx = cboScaleMethod.SelectedIndex;
-                // 宽度模式：高度自动 = 宽度输入有效，高度禁用
-                // 高度模式：宽度自动 = 高度输入有效，宽度禁用
-                // 精确模式：两者均可输入
                 txtScaleW.Enabled = (idx == 0 || idx == 2);
                 txtScaleH.Enabled = (idx == 1 || idx == 2);
                 if (idx == 0) txtScaleH.Text = "";
                 if (idx == 1) txtScaleW.Text = "";
                 UpdateCommandPreview();
             };
-            cboScaleMethod.SelectedIndex = 0; // 默认宽度模式
+            cboScaleMethod.SelectedIndex = 0;
             txtScaleW.Enabled = true;
             txtScaleH.Enabled = false;
             scalePanel.Controls.AddRange(new Control[] { cboScaleMethod, new Label { Text = "宽:" }, txtScaleW, new Label { Text = "高:" }, txtScaleH });

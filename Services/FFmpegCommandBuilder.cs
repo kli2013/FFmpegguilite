@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Globalization;
 using FFLiteGUI.Models;
 using FFLiteGUI.Strategies;
 using FFLiteGUI.Utils;
@@ -58,24 +58,27 @@ namespace FFLiteGUI.Services
                     args.Add($"-r {settings.FrameRateCustom}");
 
                 IEncoderStrategy strategy = EncoderStrategyFactory.GetStrategy(settings.Encoder);
-                args.Add(strategy.BuildVideoParams(settings));
+                string videoParams = strategy.BuildVideoParams(settings);
+                if (!string.IsNullOrEmpty(videoParams))
+                    args.Add(videoParams);
             }
 
-            // 音频处理
+            // 音频处理 —— 修复音频编码缺失问题
             if (!settings.AudioEnabled)
             {
                 args.Add("-an");
             }
             else
             {
-                // 确保音频编码器不为空
+                // 确保音频编码器有默认值
                 string audioCodec = settings.AudioCodec;
                 if (string.IsNullOrEmpty(audioCodec)) audioCodec = "aac";
-                
+
                 if (audioCodec == "copy")
                 {
                     if (settings.SpeedEnabled && Math.Abs(settings.SpeedFactor - 1.0) > 0.001)
                     {
+                        // 变速时必须重编码音频
                         args.Add("-c:a aac");
                         args.Add($"-b:a {settings.AudioBitrate}");
                         args.Add($"-ar {settings.AudioSamplerate}");
@@ -128,12 +131,18 @@ namespace FFLiteGUI.Services
             // 缩放
             if (s.ScaleEnabled)
             {
-                if (s.ScaleMethod == "width" && int.TryParse(s.ScaleWidth, out int w))
-                    filters.Add($"scale={w}:-2");
-                else if (s.ScaleMethod == "height" && int.TryParse(s.ScaleHeight, out int h))
-                    filters.Add($"scale=-2:{h}");
-                else if (s.ScaleMethod == "exact" && int.TryParse(s.ScaleWidth, out int ew) && int.TryParse(s.ScaleHeight, out int eh))
-                    filters.Add($"scale={ew}:{eh}");
+                if (s.ScaleMethod == "width" && !string.IsNullOrEmpty(s.ScaleWidth))
+                {
+                    filters.Add($"scale={s.ScaleWidth}:-2");
+                }
+                else if (s.ScaleMethod == "height" && !string.IsNullOrEmpty(s.ScaleHeight))
+                {
+                    filters.Add($"scale=-2:{s.ScaleHeight}");
+                }
+                else if (s.ScaleMethod == "exact" && !string.IsNullOrEmpty(s.ScaleWidth) && !string.IsNullOrEmpty(s.ScaleHeight))
+                {
+                    filters.Add($"scale={s.ScaleWidth}:{s.ScaleHeight}");
+                }
             }
 
             // 旋转
@@ -153,10 +162,10 @@ namespace FFLiteGUI.Services
                 filters.Add(s.DeinterlaceFilter);
 
             // 像素格式
-            if (s.PixFmtEnabled)
+            if (s.PixFmtEnabled && !string.IsNullOrEmpty(s.PixFmt))
                 filters.Add($"format={s.PixFmt}");
 
-            // 变速
+            // 变速 (视频)
             if (s.SpeedEnabled && Math.Abs(s.SpeedFactor - 1.0) > 0.001)
                 filters.Add($"setpts={1.0 / s.SpeedFactor}*PTS");
 
@@ -190,7 +199,7 @@ namespace FFLiteGUI.Services
                 factors.Add(remain);
             if (factors.Count == 0)
                 return "";
-            return string.Join(",", factors.ConvertAll(f => $"atempo={f.ToString(System.Globalization.CultureInfo.InvariantCulture)}"));
+            return string.Join(",", factors.ConvertAll(f => $"atempo={f.ToString(CultureInfo.InvariantCulture)}"));
         }
     }
 }

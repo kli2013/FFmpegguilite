@@ -68,11 +68,14 @@ namespace FFLiteGUI.Services
             }
             else
             {
-                if (settings.AudioCodec == "copy")
+                // 确保音频编码器不为空
+                string audioCodec = settings.AudioCodec;
+                if (string.IsNullOrEmpty(audioCodec)) audioCodec = "aac";
+                
+                if (audioCodec == "copy")
                 {
                     if (settings.SpeedEnabled && Math.Abs(settings.SpeedFactor - 1.0) > 0.001)
                     {
-                        // 变速时必须重编码音频
                         args.Add("-c:a aac");
                         args.Add($"-b:a {settings.AudioBitrate}");
                         args.Add($"-ar {settings.AudioSamplerate}");
@@ -87,7 +90,7 @@ namespace FFLiteGUI.Services
                 }
                 else
                 {
-                    args.Add($"-c:a {settings.AudioCodec}");
+                    args.Add($"-c:a {audioCodec}");
                     args.Add($"-b:a {settings.AudioBitrate}");
                     args.Add($"-ar {settings.AudioSamplerate}");
                     if (settings.SpeedEnabled && Math.Abs(settings.SpeedFactor - 1.0) > 0.001)

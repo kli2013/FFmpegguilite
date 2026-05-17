@@ -1,4 +1,3 @@
-// Forms\EditTaskForm.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,6 +7,7 @@ using System.Windows.Forms;
 using FFLiteGUI.Models;
 using FFLiteGUI.Services;
 using FFLiteGUI.Utils;
+using FFLiteGUI.Validators;
 
 namespace FFLiteGUI.Forms
 {
@@ -18,7 +18,6 @@ namespace FFLiteGUI.Forms
         private VideoSettings _originalSettings;
         private readonly string _inputFile;
 
-        // 控件
         private TabControl _tabControl;
         private TextBox _outputDirTextBox;
         private TextBox _suffixTextBox;
@@ -267,7 +266,6 @@ namespace FFLiteGUI.Forms
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             int row = 0;
-            // 帧率
             layout.Controls.Add(new Label { Text = "帧率:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             var fpsPanel = new FlowLayoutPanel();
             _frameRateTypeComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
@@ -278,7 +276,6 @@ namespace FFLiteGUI.Forms
             fpsPanel.Controls.AddRange(new Control[] { _frameRateTypeComboBox, _frameRateCustomTextBox, new Label { Text = "fps" } });
             layout.Controls.Add(fpsPanel, 1, row++);
 
-            // 缩放
             _scaleCheckBox = new CheckBox { Text = "启用缩放", AutoSize = true };
             _scaleCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_scaleCheckBox, 0, row);
@@ -293,7 +290,6 @@ namespace FFLiteGUI.Forms
             scalePanel.Controls.AddRange(new Control[] { _scaleMethodComboBox, new Label { Text = "宽:" }, _scaleWidthTextBox, new Label { Text = "高:" }, _scaleHeightTextBox });
             layout.Controls.Add(scalePanel, 1, row++);
 
-            // 裁剪
             _cropCheckBox = new CheckBox { Text = "启用裁剪", AutoSize = true };
             _cropCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_cropCheckBox, 0, row);
@@ -310,14 +306,12 @@ namespace FFLiteGUI.Forms
                 new Label { Text = "左:" }, _cropLeftTextBox, new Label { Text = "上:" }, _cropTopTextBox });
             layout.Controls.Add(cropPanel, 1, row++);
 
-            // 旋转
             layout.Controls.Add(new Label { Text = "旋转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _rotateComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             _rotateComboBox.Items.AddRange(new[] { "无", "90°顺时针", "180°", "90°逆时针" });
             _rotateComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_rotateComboBox, 1, row++);
 
-            // 翻转
             var flipPanel = new FlowLayoutPanel();
             _vflipCheckBox = new CheckBox { Text = "上下翻转", AutoSize = true };
             _hflipCheckBox = new CheckBox { Text = "左右翻转", AutoSize = true };
@@ -327,7 +321,6 @@ namespace FFLiteGUI.Forms
             layout.Controls.Add(new Label { Text = "翻转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             layout.Controls.Add(flipPanel, 1, row++);
 
-            // 变速
             _speedCheckBox = new CheckBox { Text = "启用变速", AutoSize = true };
             _speedCheckBox.CheckedChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_speedCheckBox, 0, row);
@@ -337,14 +330,12 @@ namespace FFLiteGUI.Forms
             speedPanel.Controls.AddRange(new Control[] { new Label { Text = "速度倍数 (0.5慢,2.0快):" }, _speedFactorTextBox });
             layout.Controls.Add(speedPanel, 1, row++);
 
-            // 反交错
             layout.Controls.Add(new Label { Text = "反交错:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             _deinterlaceComboBox = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             _deinterlaceComboBox.Items.AddRange(new[] { "none", "bwdif", "yadif", "kerndeint", "pp=lb", "fieldorder" });
             _deinterlaceComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_deinterlaceComboBox, 1, row++);
 
-            // 像素格式
             _pixFmtCheckBox = new CheckBox { Text = "指定像素格式", AutoSize = true };
             _pixFmtCheckBox.CheckedChanged += (s, e) => { _pixFmtComboBox.Enabled = _pixFmtCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_pixFmtCheckBox, 0, row);
@@ -353,7 +344,6 @@ namespace FFLiteGUI.Forms
             _pixFmtComboBox.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             layout.Controls.Add(_pixFmtComboBox, 1, row++);
 
-            // 烧录字幕
             _subtitleCheckBox = new CheckBox { Text = "烧录字幕", AutoSize = true };
             _subtitleCheckBox.CheckedChanged += (s, e) => { _subtitlePathTextBox.Enabled = _subtitleCheckBox.Checked; _browseSubtitleButton.Enabled = _subtitleCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_subtitleCheckBox, 0, row);
@@ -374,7 +364,6 @@ namespace FFLiteGUI.Forms
             subPanel.Controls.AddRange(new Control[] { _subtitlePathTextBox, _browseSubtitleButton });
             layout.Controls.Add(subPanel, 1, row++);
 
-            // 截取片段
             _trimCheckBox = new CheckBox { Text = "启用截取片段", AutoSize = true };
             _trimCheckBox.CheckedChanged += (s, e) => { _trimStartTextBox.Enabled = _trimCheckBox.Checked; _trimEndTextBox.Enabled = _trimCheckBox.Checked; UpdateCommandPreview(); };
             layout.Controls.Add(_trimCheckBox, 0, row);

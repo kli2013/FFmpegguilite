@@ -1,19 +1,50 @@
-public class PresetManager
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
+using FFLiteGUI.Models;
+
+namespace FFLiteGUI.Services
 {
-    private readonly string presetFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFLiteGUI", "presets.json");
-
-    public Dictionary<string, VideoSettings> LoadPresets()
+    public class PresetManager
     {
-        if (!File.Exists(presetFile)) return new Dictionary<string, VideoSettings>();
-        string json = File.ReadAllText(presetFile);
-        return JsonConvert.DeserializeObject<Dictionary<string, VideoSettings>>(json);
-    }
+        private readonly string _presetFile;
 
-    public void SavePreset(string name, VideoSettings settings)
-    {
-        var presets = LoadPresets();
-        presets[name] = settings;
-        string json = JsonConvert.SerializeObject(presets, Formatting.Indented);
-        File.WriteAllText(presetFile, json);
+        public PresetManager(string presetFilePath)
+        {
+            _presetFile = presetFilePath;
+        }
+
+        public Dictionary<string, VideoSettings> LoadPresets()
+        {
+            if (!File.Exists(_presetFile))
+                return new Dictionary<string, VideoSettings>();
+
+            try
+            {
+                string json = File.ReadAllText(_presetFile);
+                return JsonConvert.DeserializeObject<Dictionary<string, VideoSettings>>(json) ?? new Dictionary<string, VideoSettings>();
+            }
+            catch
+            {
+                return new Dictionary<string, VideoSettings>();
+            }
+        }
+
+        public void SavePresets(Dictionary<string, VideoSettings> presets)
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(_presetFile);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                string json = JsonConvert.SerializeObject(presets, Formatting.Indented);
+                File.WriteAllText(_presetFile, json);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"保存预设失败: {ex.Message}", ex);
+            }
+        }
     }
 }

@@ -11,6 +11,7 @@ using FFLiteGUI.Models;
 using FFLiteGUI.Services;
 using FFLiteGUI.Strategies;
 using FFLiteGUI.Utils;
+using FFLiteGUI.Validators;
 
 namespace FFLiteGUI.Forms
 {
@@ -781,32 +782,40 @@ namespace FFLiteGUI.Forms
             _cts = new CancellationTokenSource();
             _hwSemaphore = new SemaphoreSlim(_maxHwParallel);
             AppendInfo($"🚀 启动队列，最大并行: {_maxParallel}，硬编并发限制: {_maxHwParallel}");
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallel, CancellationToken = _cts.Token };
-            try
+            var token = _cts.Token;
+            
+            var runningTasks = new List<Task>();
+            var queue = new Queue<TaskInfo>(pending);
+            
+            async Task ProcessWithLimit(TaskInfo task)
             {
-                await Parallel.ForEachAsync(pending, options, async (task, token) =>
+                bool isHw = IsHardwareEncoder(task.Settings.Encoder);
+                if (isHw) await _hwSemaphore.WaitAsync(token);
+                try
                 {
-                    bool isHw = IsHardwareEncoder(task.Settings.Encoder);
-                    if (isHw) await _hwSemaphore.WaitAsync(token);
-                    try
-                    {
-                        await ProcessTask(task, token);
-                    }
-                    finally { if (isHw) _hwSemaphore.Release(); }
-                });
+                    await ProcessTask(task, token);
+                }
+                finally { if (isHw) _hwSemaphore.Release(); }
             }
-            catch (OperationCanceledException)
+            
+            while (queue.Count > 0 && !token.IsCancellationRequested)
             {
-                AppendInfo("队列已停止");
+                while (runningTasks.Count < _maxParallel && queue.Count > 0)
+                {
+                    var task = queue.Dequeue();
+                    var t = ProcessWithLimit(task);
+                    runningTasks.Add(t);
+                }
+                var completed = await Task.WhenAny(runningTasks);
+                runningTasks.Remove(completed);
             }
-            finally
-            {
-                _isProcessing = false;
-                _cts?.Dispose();
-                _cts = null;
-                _hwSemaphore?.Dispose();
-                AppendInfo("队列处理完成");
-            }
+            await Task.WhenAll(runningTasks);
+            
+            _isProcessing = false;
+            _cts?.Dispose();
+            _cts = null;
+            _hwSemaphore?.Dispose();
+            AppendInfo("队列处理完成");
         }
 
         private bool IsHardwareEncoder(string encoder)

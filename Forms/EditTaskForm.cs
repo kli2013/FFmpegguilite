@@ -361,7 +361,16 @@ namespace FFLiteGUI.Forms
             _subtitlePathTextBox = new TextBox { Width = 250, Enabled = false };
             _subtitlePathTextBox.TextChanged += (s, e) => UpdateCommandPreview();
             _browseSubtitleButton = new Button { Text = "浏览...", Enabled = false };
-            _browseSubtitleButton.Click += (s, e) => { var dlg = new OpenFileDialog { Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt"; if (dlg.ShowDialog() == DialogResult.OK) { _subtitlePathTextBox.Text = PathHelper.Normalize(dlg.FileName); UpdateCommandPreview(); } } };
+            _browseSubtitleButton.Click += (sender, e) =>
+            {
+                var dlg = new OpenFileDialog();
+                dlg.Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt";
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    _subtitlePathTextBox.Text = PathHelper.Normalize(dlg.FileName);
+                    UpdateCommandPreview();
+                }
+            };
             subPanel.Controls.AddRange(new Control[] { _subtitlePathTextBox, _browseSubtitleButton });
             layout.Controls.Add(subPanel, 1, row++);
 
@@ -428,13 +437,11 @@ namespace FFLiteGUI.Forms
         private void LoadSettingsIntoUI()
         {
             var s = _task.Settings;
-            // IO
             _outputDirTextBox.Text = s.OutputDir;
             _suffixTextBox.Text = s.OutputSuffix;
             _customNameTextBox.Text = s.CustomOutputName;
             _containerComboBox.SelectedItem = s.OutputContainer;
 
-            // 视频编码
             _encoderComboBox.SelectedItem = s.Encoder;
             _presetComboBox.SelectedItem = s.Preset;
             switch (s.RateControlType)
@@ -448,7 +455,6 @@ namespace FFLiteGUI.Forms
             _hwaccelDecoderComboBox.SelectedItem = s.HwaccelDecoder ?? "无";
             _customArgsTextBox.Text = s.CustomArgs;
 
-            // 滤镜
             _frameRateTypeComboBox.SelectedIndex = s.FrameRateType == "keep" ? 0 : 1;
             _frameRateCustomTextBox.Text = s.FrameRateCustom;
             _scaleCheckBox.Checked = s.ScaleEnabled;
@@ -474,7 +480,6 @@ namespace FFLiteGUI.Forms
             _trimStartTextBox.Text = s.TrimStart;
             _trimEndTextBox.Text = s.TrimEnd;
 
-            // 音频
             _audioEnabledCheckBox.Checked = s.AudioEnabled;
             _onlyAudioCheckBox.Checked = s.OnlyAudio;
             _audioFormatComboBox.SelectedItem = s.AudioFormat;
@@ -516,12 +521,10 @@ namespace FFLiteGUI.Forms
         private VideoSettings CollectSettings()
         {
             var s = new VideoSettings();
-            // IO
             s.OutputDir = _outputDirTextBox.Text;
             s.OutputSuffix = _suffixTextBox.Text;
             s.CustomOutputName = _customNameTextBox.Text;
             s.OutputContainer = _containerComboBox.SelectedItem?.ToString() ?? "mp4";
-            // 视频编码
             s.Encoder = _encoderComboBox.SelectedItem?.ToString();
             s.Preset = _presetComboBox.SelectedItem?.ToString();
             if (_crfRadio.Checked) { s.RateControlType = "crf"; s.CrfValue = _crfTrackBar.Value; }
@@ -531,7 +534,6 @@ namespace FFLiteGUI.Forms
             s.HwaccelEnabled = _hwaccelCheckBox.Checked;
             s.HwaccelDecoder = _hwaccelDecoderComboBox.SelectedItem?.ToString();
             s.CustomArgs = _customArgsTextBox.Text;
-            // 滤镜
             s.FrameRateType = _frameRateTypeComboBox.SelectedIndex == 0 ? "keep" : "custom";
             s.FrameRateCustom = _frameRateCustomTextBox.Text;
             s.ScaleEnabled = _scaleCheckBox.Checked;
@@ -556,7 +558,6 @@ namespace FFLiteGUI.Forms
             s.TrimEnabled = _trimCheckBox.Checked;
             s.TrimStart = _trimStartTextBox.Text;
             s.TrimEnd = _trimEndTextBox.Text;
-            // 音频
             s.AudioEnabled = _audioEnabledCheckBox.Checked;
             s.OnlyAudio = _onlyAudioCheckBox.Checked;
             s.AudioFormat = _audioFormatComboBox.SelectedItem?.ToString();

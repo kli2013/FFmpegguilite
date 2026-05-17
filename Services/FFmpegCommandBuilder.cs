@@ -1,3 +1,4 @@
+using FFLiteGUI.Strategies;
 public class FFmpegCommandBuilder
 {
     private readonly string ffmpegPath;

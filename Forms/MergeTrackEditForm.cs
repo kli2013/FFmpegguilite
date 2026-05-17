@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using FFLiteGUI.Models;
-using FFLiteGUI.Services;
 using FFLiteGUI.Utils;
 
 namespace FFLiteGUI.Forms
@@ -17,7 +16,6 @@ namespace FFLiteGUI.Forms
         private readonly List<TrackInfo> _allTracks;
         private TabControl _tabControl;
         
-        // 视频专用控件
         private ComboBox _encoderComboBox;
         private ComboBox _presetComboBox;
         private RadioButton _crfRadio;
@@ -52,7 +50,6 @@ namespace FFLiteGUI.Forms
         private ComboBox _frameRateTypeComboBox;
         private TextBox _frameRateCustomTextBox;
         
-        // 画中画专用控件 (仅非主视频且画中画模式)
         private CheckBox _overlayEnabledCheckBox;
         private TextBox _overlayXTextBox;
         private TextBox _overlayYTextBox;
@@ -62,12 +59,10 @@ namespace FFLiteGUI.Forms
         private TextBox _offsetXTextBox;
         private TextBox _offsetYTextBox;
         
-        // 音频专用控件
         private ComboBox _audioEncoderComboBox;
         private TextBox _audioBitrateTextBox;
         private TextBox _audioSamplerateTextBox;
         
-        // 字幕专用控件
         private ComboBox _subtitleEncoderComboBox;
         
         public MergeTrackEditForm(TrackInfo track, bool isPipEnabled, List<TrackInfo> allTracks)
@@ -75,11 +70,11 @@ namespace FFLiteGUI.Forms
             _track = track;
             _isPipEnabled = isPipEnabled;
             _allTracks = allTracks;
-            InitializeComponents();
+            InitializeComponent();
             LoadSettingsIntoUI();
         }
         
-        private void InitializeComponents()
+        private void InitializeComponent()
         {
             this.Text = $"编辑轨道 - {_track.Type} ({Path.GetFileName(_track.FilePath)})";
             this.Size = new Size(1000, 450);
@@ -413,9 +408,9 @@ namespace FFLiteGUI.Forms
             if (_track.Type == "video")
             {
                 var s = _track.EncSettings;
-                _encoderComboBox.SelectedItem = s.ContainsKey("encoder") ? s["encoder"] : "copy";
-                _presetComboBox.SelectedItem = s.ContainsKey("preset") ? s["preset"] : "medium";
-                string rc = s.ContainsKey("rate_control_type") ? s["rate_control_type"] : "crf";
+                _encoderComboBox.SelectedItem = s.GetValueOrDefault("encoder", "copy");
+                _presetComboBox.SelectedItem = s.GetValueOrDefault("preset", "medium");
+                string rc = s.GetValueOrDefault("rate_control_type", "crf");
                 if (rc == "crf") { _crfRadio.Checked = true; _crfTrackBar.Value = int.Parse(s.GetValueOrDefault("crf_value", "25")); }
                 else if (rc == "cq") { _cqRadio.Checked = true; _cqTrackBar.Value = int.Parse(s.GetValueOrDefault("cq_value", "35")); }
                 else if (rc == "global_quality") { _globalQualityRadio.Checked = true; _gqTrackBar.Value = int.Parse(s.GetValueOrDefault("global_quality", "25")); }
@@ -466,14 +461,14 @@ namespace FFLiteGUI.Forms
             else if (_track.Type == "audio")
             {
                 var s = _track.EncSettings;
-                _audioEncoderComboBox.SelectedItem = s.ContainsKey("encoder") ? s["encoder"] : "copy";
-                _audioBitrateTextBox.Text = s.ContainsKey("bitrate") ? s["bitrate"] : "128k";
-                _audioSamplerateTextBox.Text = s.ContainsKey("samplerate") ? s["samplerate"] : "44100";
+                _audioEncoderComboBox.SelectedItem = s.GetValueOrDefault("encoder", "copy");
+                _audioBitrateTextBox.Text = s.GetValueOrDefault("bitrate", "128k");
+                _audioSamplerateTextBox.Text = s.GetValueOrDefault("samplerate", "44100");
             }
             else if (_track.Type == "subtitle")
             {
                 var s = _track.EncSettings;
-                _subtitleEncoderComboBox.SelectedItem = s.ContainsKey("encoder") ? s["encoder"] : "copy";
+                _subtitleEncoderComboBox.SelectedItem = s.GetValueOrDefault("encoder", "copy");
             }
         }
         

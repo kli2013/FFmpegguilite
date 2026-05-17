@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyTitle>FFLiteGUI</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <Authors>FFLiteGUI Contributors</Authors>
+    <Description>FFmpeg 多功能图形工具</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Forms\MainForm.cs" />
+    <Compile Include="Forms\EditTaskForm.cs" />
+    <Compile Include="Forms\MergeTrackEditForm.cs" />
+    <Compile Include="Forms\PresetManagerForm.cs" />
+    <Compile Include="Models\TaskInfo.cs" />
+    <Compile Include="Models\TrackInfo.cs" />
+    <Compile Include="Models\VideoSettings.cs" />
+    <Compile Include="Models\AudioSettings.cs" />
+    <Compile Include="Models\FilterSettings.cs" />
+    <Compile Include="Services\FFmpegCommandBuilder.cs" />
+    <Compile Include="Services\FFmpegProcessRunner.cs" />
+    <Compile Include="Services\PresetManager.cs" />
+    <Compile Include="Services\HardwareDecoderHelper.cs" />
+    <Compile Include="Services\MergeCommandBuilder.cs" />
+    <Compile Include="Strategies\IEncoderStrategy.cs" />
+    <Compile Include="Strategies\SoftwareEncoder.cs" />
+    <Compile Include="Strategies\NVENCEncoder.cs" />
+    <Compile Include="Strategies\QSVEncoder.cs" />
+    <Compile Include="Strategies\OtherEncoder.cs" />
+    <Compile Include="Validators\ParamValidator.cs" />
+    <Compile Include="Utils\PathHelper.cs" />
+    <Compile Include="Utils\ExpressionEvaluator.cs" />
+    <Compile Include="Utils\Win32Native.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Reference Include="Microsoft.VisualBasic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ffplay.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ffprobe.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

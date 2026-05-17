@@ -37,8 +37,7 @@ namespace FFLiteGUI.Utils
                 if (result == 0)
                     return longPath;
             }
-            string shortPath = buffer.ToString();
-            return shortPath;
+            return buffer.ToString();
         }
 
         public static string EscapeForFilter(string path)
@@ -65,6 +64,27 @@ namespace FFLiteGUI.Utils
         {
             string combined = Path.Combine(parts);
             return Normalize(combined);
+        }
+
+        public static string GetExecutablePath(string exeName)
+        {
+            // 当前程序目录
+            string local = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, exeName);
+            if (File.Exists(local))
+                return local;
+
+            // PATH 环境变量
+            string pathEnv = Environment.GetEnvironmentVariable("PATH");
+            if (!string.IsNullOrEmpty(pathEnv))
+            {
+                foreach (string dir in pathEnv.Split(Path.PathSeparator))
+                {
+                    string full = Path.Combine(dir, exeName);
+                    if (File.Exists(full))
+                        return full;
+                }
+            }
+            return null;
         }
     }
 }

@@ -5,7 +5,6 @@
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>8.0</LangVersion>
     <Nullable>disable</Nullable>
-    <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyTitle>FFLiteGUI</AssemblyTitle>
     <Version>1.0.0</Version>
     <Authors>FFLiteGUI Contributors</Authors>

@@ -1,4 +1,3 @@
-// Forms\MainForm.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,27 +16,75 @@ namespace FFLiteGUI.Forms
 {
     public class MainForm : Form
     {
-        // 控件字段（略，已在InitializeComponent中创建）
-        private TextBox txtInputFile; private TextBox txtOutputDir; private TextBox txtOutputSuffix; private TextBox txtCustomOutputName;
-        private ComboBox cboOutputContainer; private ComboBox cboEncoder; private ComboBox cboPreset;
-        private RadioButton rbCRF; private RadioButton rbCQ; private RadioButton rbGlobalQuality; private RadioButton rbBitrate;
-        private TrackBar trkCRF; private Label lblCRFValue; private TrackBar trkCQ; private Label lblCQValue;
-        private TrackBar trkGlobalQuality; private Label lblGlobalQualityValue; private TextBox txtBitrate;
-        private CheckBox chkHwaccel; private ComboBox cboHwaccelDecoder; private TextBox txtCustomArgs;
-        private CheckBox chkAudioEnabled; private ComboBox cboAudioCodec; private TextBox txtAudioBitrate; private TextBox txtAudioSamplerate;
-        private CheckBox chkOnlyAudio; private ComboBox cboAudioFormat; private ComboBox cboFrameRateType; private TextBox txtFrameRateCustom;
-        private CheckBox chkScale; private ComboBox cboScaleMethod; private TextBox txtScaleW; private TextBox txtScaleH;
-        private CheckBox chkCrop; private TextBox txtCropW; private TextBox txtCropH; private TextBox txtCropLeft; private TextBox txtCropTop;
-        private ComboBox cboRotate; private CheckBox chkVflip; private CheckBox chkHflip;
-        private CheckBox chkSpeed; private TextBox txtSpeedFactor; private ComboBox cboDeinterlace;
-        private CheckBox chkPixFmt; private ComboBox cboPixFmt;
-        private CheckBox chkSubtitle; private TextBox txtSubtitlePath; private Button btnBrowseSubtitle;
-        private CheckBox chkTrim; private TextBox txtTrimStart; private TextBox txtTrimEnd;
-        private Button btnAddTask; private Button btnStartQueue; private Button btnStopQueue; private Button btnClearAll; private Button btnRemoveSelected;
-        private NumericUpDown nudMaxParallel; private NumericUpDown nudMaxHwParallel;
-        private ListView lvTasks; private RichTextBox txtCommandPreview; private TextBox txtInfoLog; private TextBox txtDetailLog;
-        private Button btnBrowseInput; private Button btnBrowseOutputDir; private Button btnRefreshPreview;
+        // 控件字段
+        private TextBox txtInputFile;
+        private TextBox txtOutputDir;
+        private TextBox txtOutputSuffix;
+        private TextBox txtCustomOutputName;
+        private ComboBox cboOutputContainer;
+        private ComboBox cboEncoder;
+        private ComboBox cboPreset;
+        private RadioButton rbCRF;
+        private RadioButton rbCQ;
+        private RadioButton rbGlobalQuality;
+        private RadioButton rbBitrate;
+        private TrackBar trkCRF;
+        private Label lblCRFValue;
+        private TrackBar trkCQ;
+        private Label lblCQValue;
+        private TrackBar trkGlobalQuality;
+        private Label lblGlobalQualityValue;
+        private TextBox txtBitrate;
+        private CheckBox chkHwaccel;
+        private ComboBox cboHwaccelDecoder;
+        private TextBox txtCustomArgs;
+        private CheckBox chkAudioEnabled;
+        private ComboBox cboAudioCodec;
+        private TextBox txtAudioBitrate;
+        private TextBox txtAudioSamplerate;
+        private CheckBox chkOnlyAudio;
+        private ComboBox cboAudioFormat;
+        private ComboBox cboFrameRateType;
+        private TextBox txtFrameRateCustom;
+        private CheckBox chkScale;
+        private ComboBox cboScaleMethod;
+        private TextBox txtScaleW;
+        private TextBox txtScaleH;
+        private CheckBox chkCrop;
+        private TextBox txtCropW;
+        private TextBox txtCropH;
+        private TextBox txtCropLeft;
+        private TextBox txtCropTop;
+        private ComboBox cboRotate;
+        private CheckBox chkVflip;
+        private CheckBox chkHflip;
+        private CheckBox chkSpeed;
+        private TextBox txtSpeedFactor;
+        private ComboBox cboDeinterlace;
+        private CheckBox chkPixFmt;
+        private ComboBox cboPixFmt;
+        private CheckBox chkSubtitle;
+        private TextBox txtSubtitlePath;
+        private Button btnBrowseSubtitle;
+        private CheckBox chkTrim;
+        private TextBox txtTrimStart;
+        private TextBox txtTrimEnd;
+        private Button btnAddTask;
+        private Button btnStartQueue;
+        private Button btnStopQueue;
+        private Button btnClearAll;
+        private Button btnRemoveSelected;
+        private NumericUpDown nudMaxParallel;
+        private NumericUpDown nudMaxHwParallel;
+        private ListView lvTasks;
+        private RichTextBox txtCommandPreview;
+        private TextBox txtInfoLog;
+        private TextBox txtDetailLog;
+        private Button btnBrowseInput;
+        private Button btnBrowseOutputDir;
+        private Button btnRefreshPreview;
 
+        // 后端字段
         private string _ffmpegPath;
         private List<TaskInfo> _tasks = new List<TaskInfo>();
         private bool _isProcessing;
@@ -52,6 +99,11 @@ namespace FFLiteGUI.Forms
             FindFFmpeg();
             LoadSettings();
             UpdateCommandPreview();
+
+            // 启用拖拽文件
+            this.AllowDrop = true;
+            this.DragEnter += MainForm_DragEnter;
+            this.DragDrop += MainForm_DragDrop;
         }
 
         private void InitializeComponent()
@@ -61,16 +113,20 @@ namespace FFLiteGUI.Forms
             this.StartPosition = FormStartPosition.CenterScreen;
             this.MinimumSize = new Size(1000, 700);
 
-            // 主布局
+            // 主布局：左右分割
             var splitContainer = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical };
             splitContainer.SplitterDistance = 850;
+            splitContainer.Panel1MinSize = 600;
+            splitContainer.Panel2MinSize = 300;
+
+            // ========== 左侧：设置区域 ==========
             var leftPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 4, ColumnCount = 1, Padding = new Padding(5) };
             leftPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             leftPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             leftPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            // 输入输出区域
+            // ----- 输入/输出区域 -----
             var ioGroup = new GroupBox { Text = "输入 / 输出", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var ioLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 4, Padding = new Padding(3) };
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -112,10 +168,13 @@ namespace FFLiteGUI.Forms
             cboOutputContainer.Items.AddRange(new[] { "mp4", "mkv", "mov", "avi", "webm" });
             cboOutputContainer.SelectedIndex = 0;
             ioLayout.Controls.Add(cboOutputContainer, 1, row);
+            ioLayout.Controls.Add(new Panel(), 2, row);
+            ioLayout.Controls.Add(new Panel(), 3, row);
+
             ioGroup.Controls.Add(ioLayout);
             leftPanel.Controls.Add(ioGroup, 0, 0);
 
-            // 预设区域
+            // ----- 参数预设区域 -----
             var presetGroup = new GroupBox { Text = "参数预设", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var presetLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(3) };
             presetLayout.Controls.Add(new Label { Text = "预设名称:" });
@@ -136,14 +195,15 @@ namespace FFLiteGUI.Forms
             presetGroup.Controls.Add(presetLayout);
             leftPanel.Controls.Add(presetGroup, 0, 1);
 
-            // 主要参数标签页
+            // ----- 主要参数标签页（视频编码 / 视频滤镜 / 音频 / 封装合并）-----
             var paramTab = new TabControl { Dock = DockStyle.Fill };
             paramTab.TabPages.Add(CreateVideoEncodingTab());
             paramTab.TabPages.Add(CreateVideoFiltersTab());
             paramTab.TabPages.Add(CreateAudioTab());
+            paramTab.TabPages.Add(CreateMergeTab());   // 新增封装/合并/画中画标签页
             leftPanel.Controls.Add(paramTab, 0, 2);
 
-            // 底部按钮
+            // ----- 底部按钮区域 -----
             var bottomBtnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5) };
             var btnSingleTranscode = new Button { Text = "开始编码（单文件）", BackColor = Color.LightGreen, Width = 150 };
             btnSingleTranscode.Click += (s, e) => TranscodeSingle();
@@ -163,11 +223,12 @@ namespace FFLiteGUI.Forms
 
             splitContainer.Panel1.Controls.Add(leftPanel);
 
-            // 右侧面板
+            // ========== 右侧：任务列表和日志 ==========
             var rightPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(5) };
-            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
-            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+            // 调整行高比例：任务列表占 60%，命令预览占 20%，日志占 20%
+            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
+            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
+            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
 
             // 任务列表
             var taskGroup = new GroupBox { Text = "任务队列", Dock = DockStyle.Fill };
@@ -204,7 +265,7 @@ namespace FFLiteGUI.Forms
             previewGroup.Controls.Add(txtCommandPreview);
             rightPanel.Controls.Add(previewGroup, 0, 1);
 
-            // 日志
+            // 日志区域（双文本框）
             var logGroup = new GroupBox { Text = "转换日志", Dock = DockStyle.Fill };
             var logLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
             logLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
@@ -223,13 +284,13 @@ namespace FFLiteGUI.Forms
             splitContainer.Panel2.Controls.Add(rightPanel);
             this.Controls.Add(splitContainer);
 
-            // 事件绑定（仅绑定最必要的）
+            // ---------- 事件绑定（保证所有修改都会刷新命令预览）----------
             txtInputFile.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputDir.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputSuffix.TextChanged += (s, e) => UpdateCommandPreview();
             txtCustomOutputName.TextChanged += (s, e) => UpdateCommandPreview();
             cboOutputContainer.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
-            cboEncoder.SelectedIndexChanged += (s, e) => OnEncoderChanged();
+            cboEncoder.SelectedIndexChanged += (s, e) => { OnEncoderChanged(); UpdateCommandPreview(); };
             rbCRF.CheckedChanged += (s, e) => UpdateCommandPreview();
             rbCQ.CheckedChanged += (s, e) => UpdateCommandPreview();
             rbGlobalQuality.CheckedChanged += (s, e) => UpdateCommandPreview();
@@ -241,12 +302,14 @@ namespace FFLiteGUI.Forms
             chkHwaccel.CheckedChanged += (s, e) => { cboHwaccelDecoder.Enabled = chkHwaccel.Checked; if (chkHwaccel.Checked && cboHwaccelDecoder.SelectedIndex < 0) cboHwaccelDecoder.SelectedIndex = 1; UpdateCommandPreview(); };
             cboHwaccelDecoder.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             txtCustomArgs.TextChanged += (s, e) => UpdateCommandPreview();
+
             chkAudioEnabled.CheckedChanged += (s, e) => UpdateCommandPreview();
             cboAudioCodec.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             txtAudioBitrate.TextChanged += (s, e) => UpdateCommandPreview();
             txtAudioSamplerate.TextChanged += (s, e) => UpdateCommandPreview();
             chkOnlyAudio.CheckedChanged += (s, e) => UpdateCommandPreview();
             cboAudioFormat.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+
             cboFrameRateType.SelectedIndexChanged += (s, e) => { txtFrameRateCustom.Enabled = cboFrameRateType.SelectedIndex == 1; UpdateCommandPreview(); };
             txtFrameRateCustom.TextChanged += (s, e) => UpdateCommandPreview();
             chkScale.CheckedChanged += (s, e) => UpdateCommandPreview();
@@ -273,6 +336,7 @@ namespace FFLiteGUI.Forms
             txtTrimEnd.TextChanged += (s, e) => UpdateCommandPreview();
         }
 
+        // ========== 创建各个标签页 ==========
         private TabPage CreateVideoEncodingTab()
         {
             var page = new TabPage("视频编码");
@@ -295,13 +359,13 @@ namespace FFLiteGUI.Forms
             cboEncoder.Items.AddRange(new[] { "libx264", "libx265", "libvpx-vp9", "libsvtav1", "mpeg4", "libxvid", "libtheora",
                 "h264_nvenc", "hevc_nvenc", "av1_nvenc", "h264_qsv", "hevc_qsv", "av1_qsv",
                 "h264_amf", "hevc_amf", "av1_amf", "h264_vaapi", "hevc_vaapi", "copy" });
-            cboEncoder.SelectedIndex = 1;
+            cboEncoder.SelectedIndex = 1; // libx265
             leftLayout.Controls.Add(cboEncoder, 1, row++);
 
             leftLayout.Controls.Add(new Label { Text = "编码预设:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             cboPreset = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             cboPreset.Items.AddRange(new[] { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "p1", "p2", "p3", "p4", "p5", "p6", "p7" });
-            cboPreset.SelectedIndex = 5;
+            cboPreset.SelectedIndex = 5; // medium
             leftLayout.Controls.Add(cboPreset, 1, row++);
 
             leftLayout.Controls.Add(new Label { Text = "码率控制:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
@@ -335,6 +399,10 @@ namespace FFLiteGUI.Forms
             rbCQ.CheckedChanged += (s, e) => { cqPanel.Visible = rbCQ.Checked; UpdateCommandPreview(); };
             rbGlobalQuality.CheckedChanged += (s, e) => { gqPanel.Visible = rbGlobalQuality.Checked; UpdateCommandPreview(); };
             rbBitrate.CheckedChanged += (s, e) => { bitPanel.Visible = rbBitrate.Checked; UpdateCommandPreview(); };
+            trkCRF.ValueChanged += (s, e) => { lblCRFValue.Text = trkCRF.Value.ToString(); UpdateCommandPreview(); };
+            trkCQ.ValueChanged += (s, e) => { lblCQValue.Text = trkCQ.Value.ToString(); UpdateCommandPreview(); };
+            trkGlobalQuality.ValueChanged += (s, e) => { lblGlobalQualityValue.Text = trkGlobalQuality.Value.ToString(); UpdateCommandPreview(); };
+            txtBitrate.TextChanged += (s, e) => UpdateCommandPreview();
 
             leftGroup.Controls.Add(leftLayout);
             layout.Controls.Add(leftGroup, 0, 0);
@@ -373,6 +441,8 @@ namespace FFLiteGUI.Forms
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             int row = 0;
+
+            // 帧率
             layout.Controls.Add(new Label { Text = "帧率:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             var fpsPanel = new FlowLayoutPanel();
             cboFrameRateType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
@@ -381,16 +451,33 @@ namespace FFLiteGUI.Forms
             fpsPanel.Controls.AddRange(new Control[] { cboFrameRateType, txtFrameRateCustom, new Label { Text = "fps" } });
             layout.Controls.Add(fpsPanel, 1, row++);
 
+            // 缩放
             chkScale = new CheckBox { Text = "启用缩放", AutoSize = true };
             layout.Controls.Add(chkScale, 0, row);
             var scalePanel = new FlowLayoutPanel();
-            cboScaleMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
+            cboScaleMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             cboScaleMethod.Items.AddRange(new[] { "宽度(高度自动)", "高度(宽度自动)", "精确宽×高" });
-            txtScaleW = new TextBox { Width = 50 };
-            txtScaleH = new TextBox { Width = 50, Enabled = false };
+            txtScaleW = new TextBox { Width = 60 };
+            txtScaleH = new TextBox { Width = 60, Enabled = false };
+            cboScaleMethod.SelectedIndexChanged += (s, e) =>
+            {
+                int idx = cboScaleMethod.SelectedIndex;
+                // 宽度模式：高度自动 = 宽度输入有效，高度禁用
+                // 高度模式：宽度自动 = 高度输入有效，宽度禁用
+                // 精确模式：两者均可输入
+                txtScaleW.Enabled = (idx == 0 || idx == 2);
+                txtScaleH.Enabled = (idx == 1 || idx == 2);
+                if (idx == 0) txtScaleH.Text = "";
+                if (idx == 1) txtScaleW.Text = "";
+                UpdateCommandPreview();
+            };
+            cboScaleMethod.SelectedIndex = 0; // 默认宽度模式
+            txtScaleW.Enabled = true;
+            txtScaleH.Enabled = false;
             scalePanel.Controls.AddRange(new Control[] { cboScaleMethod, new Label { Text = "宽:" }, txtScaleW, new Label { Text = "高:" }, txtScaleH });
             layout.Controls.Add(scalePanel, 1, row++);
 
+            // 裁剪
             chkCrop = new CheckBox { Text = "启用裁剪", AutoSize = true };
             layout.Controls.Add(chkCrop, 0, row);
             var cropPanel = new FlowLayoutPanel();
@@ -398,14 +485,18 @@ namespace FFLiteGUI.Forms
             txtCropH = new TextBox { Width = 60 };
             txtCropLeft = new TextBox { Width = 50 };
             txtCropTop = new TextBox { Width = 50 };
-            cropPanel.Controls.AddRange(new Control[] { new Label { Text = "宽:" }, txtCropW, new Label { Text = "高:" }, txtCropH, new Label { Text = "左:" }, txtCropLeft, new Label { Text = "上:" }, txtCropTop });
+            cropPanel.Controls.AddRange(new Control[] { new Label { Text = "宽:" }, txtCropW, new Label { Text = "高:" }, txtCropH,
+                new Label { Text = "左:" }, txtCropLeft, new Label { Text = "上:" }, txtCropTop });
             layout.Controls.Add(cropPanel, 1, row++);
 
+            // 旋转 (默认无)
             layout.Controls.Add(new Label { Text = "旋转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             cboRotate = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             cboRotate.Items.AddRange(new[] { "无", "90°顺时针", "180°", "90°逆时针" });
+            cboRotate.SelectedIndex = 0; // 无
             layout.Controls.Add(cboRotate, 1, row++);
 
+            // 翻转
             var flipPanel = new FlowLayoutPanel();
             chkVflip = new CheckBox { Text = "上下翻转", AutoSize = true };
             chkHflip = new CheckBox { Text = "左右翻转", AutoSize = true };
@@ -413,6 +504,7 @@ namespace FFLiteGUI.Forms
             layout.Controls.Add(new Label { Text = "翻转:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             layout.Controls.Add(flipPanel, 1, row++);
 
+            // 变速
             chkSpeed = new CheckBox { Text = "启用变速", AutoSize = true };
             layout.Controls.Add(chkSpeed, 0, row);
             var speedPanel = new FlowLayoutPanel();
@@ -420,17 +512,20 @@ namespace FFLiteGUI.Forms
             speedPanel.Controls.AddRange(new Control[] { new Label { Text = "速度倍数 (0.5慢,2.0快):" }, txtSpeedFactor });
             layout.Controls.Add(speedPanel, 1, row++);
 
+            // 反交错
             layout.Controls.Add(new Label { Text = "反交错:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             cboDeinterlace = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
             cboDeinterlace.Items.AddRange(new[] { "none", "bwdif", "yadif", "kerndeint", "pp=lb", "fieldorder" });
             layout.Controls.Add(cboDeinterlace, 1, row++);
 
+            // 像素格式
             chkPixFmt = new CheckBox { Text = "指定像素格式", AutoSize = true };
             layout.Controls.Add(chkPixFmt, 0, row);
             cboPixFmt = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Enabled = false };
             cboPixFmt.Items.AddRange(new[] { "yuv420p", "yuv422p", "yuv444p", "yuv420p10le", "yuv422p10le", "yuv444p10le", "p010le", "nv12" });
             layout.Controls.Add(cboPixFmt, 1, row++);
 
+            // 烧录字幕
             chkSubtitle = new CheckBox { Text = "烧录字幕", AutoSize = true };
             layout.Controls.Add(chkSubtitle, 0, row);
             var subPanel = new FlowLayoutPanel();
@@ -441,11 +536,15 @@ namespace FFLiteGUI.Forms
                 var dlg = new OpenFileDialog();
                 dlg.Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt";
                 if (dlg.ShowDialog() == DialogResult.OK)
+                {
                     txtSubtitlePath.Text = PathHelper.Normalize(dlg.FileName);
+                    UpdateCommandPreview();
+                }
             };
             subPanel.Controls.AddRange(new Control[] { txtSubtitlePath, btnBrowseSubtitle });
             layout.Controls.Add(subPanel, 1, row++);
 
+            // 截取片段
             chkTrim = new CheckBox { Text = "启用截取片段", AutoSize = true };
             layout.Controls.Add(chkTrim, 0, row);
             var trimPanel = new FlowLayoutPanel();
@@ -461,7 +560,7 @@ namespace FFLiteGUI.Forms
         private TabPage CreateAudioTab()
         {
             var page = new TabPage("音频");
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 7, Padding = new Padding(10) };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 6, Padding = new Padding(10) };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
@@ -482,6 +581,7 @@ namespace FFLiteGUI.Forms
             layout.Controls.Add(new Label { Text = "编码器:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             cboAudioCodec = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
             cboAudioCodec.Items.AddRange(new[] { "aac", "libmp3lame", "opus", "ac3", "flac", "alac", "pcm_s16le", "copy" });
+            cboAudioCodec.SelectedIndex = 0; // aac
             layout.Controls.Add(cboAudioCodec, 1, row++);
 
             layout.Controls.Add(new Label { Text = "比特率:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
@@ -496,7 +596,39 @@ namespace FFLiteGUI.Forms
             return page;
         }
 
-        // ========== 功能方法 ==========
+        // 新增：封装/合并/画中画标签页（简化版，后续可扩展）
+        private TabPage CreateMergeTab()
+        {
+            var page = new TabPage("封装/合并/画中画");
+            var label = new Label
+            {
+                Text = "此功能正在开发中，请使用独立工具或后续版本。\n拖拽文件可直接添加到任务列表进行转码。",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Font = new Font("Microsoft YaHei", 12)
+            };
+            page.Controls.Add(label);
+            return page;
+        }
+
+        // ---------- 拖拽支持 ----------
+        private void MainForm_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy;
+        }
+
+        private void MainForm_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            foreach (string file in files)
+            {
+                if (File.Exists(file))
+                    AddTask(file, GetCurrentSettings());
+            }
+        }
+
+        // ---------- 核心业务方法 ----------
         private void FindFFmpeg()
         {
             _ffmpegPath = PathHelper.GetExecutablePath("ffmpeg.exe");
@@ -625,7 +757,6 @@ namespace FFLiteGUI.Forms
                 rbGlobalQuality.Checked = true;
             else
                 rbBitrate.Checked = true;
-            UpdateCommandPreview();
         }
 
         private void SelectInputFile()
@@ -783,10 +914,10 @@ namespace FFLiteGUI.Forms
             _hwSemaphore = new SemaphoreSlim(_maxHwParallel);
             AppendInfo($"🚀 启动队列，最大并行: {_maxParallel}，硬编并发限制: {_maxHwParallel}");
             var token = _cts.Token;
-            
+
             var runningTasks = new List<Task>();
             var queue = new Queue<TaskInfo>(pending);
-            
+
             async Task ProcessWithLimit(TaskInfo task)
             {
                 bool isHw = IsHardwareEncoder(task.Settings.Encoder);
@@ -797,7 +928,7 @@ namespace FFLiteGUI.Forms
                 }
                 finally { if (isHw) _hwSemaphore.Release(); }
             }
-            
+
             while (queue.Count > 0 && !token.IsCancellationRequested)
             {
                 while (runningTasks.Count < _maxParallel && queue.Count > 0)
@@ -810,7 +941,7 @@ namespace FFLiteGUI.Forms
                 runningTasks.Remove(completed);
             }
             await Task.WhenAll(runningTasks);
-            
+
             _isProcessing = false;
             _cts?.Dispose();
             _cts = null;
@@ -896,7 +1027,7 @@ namespace FFLiteGUI.Forms
 
         private void LoadSettings()
         {
-            // 可加载历史设置
+            // 可加载默认预设或历史设置
         }
     }
 }

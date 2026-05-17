@@ -1,0 +1,32 @@
+name: Manual Build (FFLiteGUI)
+
+on:
+  workflow_dispatch:       # 仅手动触发，不会自动编译
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: 签出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: 设置 NuGet
+      uses: nuget/setup-nuget@v1
+      with:
+        nuget-version: 'latest'
+
+    - name: 还原 NuGet 包
+      run: nuget restore FFLiteGUI.csproj
+
+    - name: 编译项目
+      run: msbuild FFLiteGUI.csproj -p:Configuration=Release -p:Platform="Any CPU"
+
+    - name: 上传编译结果（Artifact）
+      uses: actions/upload-artifact@v4
+      with:
+        name: FFLiteGUI-Release
+        path: bin\Release\net48\

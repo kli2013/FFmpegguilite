@@ -1,17 +1,24 @@
-public class NVENCEncoder : IEncoderStrategy
+using System.Collections.Generic;
+using FFLiteGUI.Models;
+
+namespace FFLiteGUI.Strategies
 {
-    public string BuildVideoParams(VideoSettings settings)
+    public class NVENCEncoder : IEncoderStrategy
     {
-        var parts = new List<string>();
-        parts.Add($"-c:v {settings.Encoder} -preset {settings.Preset}");
-        if (settings.RateControlType == "cq")
-            parts.Add($"-cq {settings.CqValue}");
-        else if (settings.RateControlType == "bitrate")
+        public string BuildVideoParams(VideoSettings settings)
         {
-            string bit = settings.BitrateVideo.Trim();
-            if (int.TryParse(bit, out _)) bit += "k";
-            parts.Add($"-b:v {bit}");
+            var parts = new List<string>();
+            parts.Add($"-c:v {settings.Encoder} -preset {settings.Preset}");
+            if (settings.RateControlType == "cq")
+                parts.Add($"-cq {settings.CqValue}");
+            else if (settings.RateControlType == "bitrate")
+            {
+                string bitrate = settings.BitrateVideo.Trim();
+                if (int.TryParse(bitrate, out _))
+                    bitrate += "k";
+                parts.Add($"-b:v {bitrate}");
+            }
+            return string.Join(" ", parts);
         }
-        return string.Join(" ", parts);
     }
 }

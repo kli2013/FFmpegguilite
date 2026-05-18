@@ -19,8 +19,7 @@ namespace FFLiteGUI.Forms
         // 布局控件
         private TableLayoutPanel mainLayout;
         private Panel leftContainer;
-        private Panel topPanel;
-        private Panel bottomPanel;
+        private SplitContainer splitVertical;      // 垂直分割容器（可拖拽调整上下比例）
         private Panel rightPanel;
 
         // 输入/输出组
@@ -115,19 +114,12 @@ namespace FFLiteGUI.Forms
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
 
-            // 调整上下区域比例
-            this.Resize += (s, e) => AdjustTopBottomRatio();
-            AdjustTopBottomRatio();
-        }
-
-        private void AdjustTopBottomRatio()
-        {
-            if (leftContainer == null || topPanel == null || bottomPanel == null) return;
-            int totalHeight = leftContainer.ClientSize.Height;
-            if (totalHeight <= 0) return;
-            int topHeight = (int)(totalHeight * 0.6);
-            topPanel.Height = topHeight;
-            bottomPanel.Height = totalHeight - topHeight;
+            // 设置 SplitContainer 初始分割位置（上部占 60%）
+            this.Load += (s, e) =>
+            {
+                if (splitVertical.Height > 0)
+                    splitVertical.SplitterDistance = (int)(splitVertical.Height * 0.6);
+            };
         }
 
         private void InitializeComponent()
@@ -137,7 +129,7 @@ namespace FFLiteGUI.Forms
             this.StartPosition = FormStartPosition.CenterScreen;
             this.MinimumSize = new Size(1100, 700);
 
-            // 主布局
+            // 主布局：左右两列
             mainLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 420f));
@@ -148,23 +140,23 @@ namespace FFLiteGUI.Forms
             mainLayout.Controls.Add(rightPanel, 1, 0);
             this.Controls.Add(mainLayout);
 
-            // 左侧手动分割上下
-            topPanel = new Panel { Dock = DockStyle.Top, Height = 500 };
-            bottomPanel = new Panel { Dock = DockStyle.Fill };
-            leftContainer.Controls.Add(bottomPanel);
-            leftContainer.Controls.Add(topPanel);
+            // 左侧垂直分割容器（可拖拽调整上下区域）
+            splitVertical = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
+            splitVertical.Panel1MinSize = 300;   // 上部最小高度300px
+            splitVertical.Panel2MinSize = 200;   // 下部最小高度200px
+            leftContainer.Controls.Add(splitVertical);
 
-            // 上部设置区 TableLayout
+            // ========== 上半部：设置区域 ==========
             var topLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6, ColumnCount = 1, Padding = new Padding(3) };
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            topPanel.Controls.Add(topLayout);
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 输入/输出
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 参数预设
+            topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // 标签页
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 命令预览
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 单文件编码按钮
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 队列控制按钮行
+            splitVertical.Panel1.Controls.Add(topLayout);
 
-            // 输入/输出组
+            // ---------- 输入/输出组 ----------
             ioGroup = new GroupBox { Text = "输入 / 输出", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var ioLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 4, Padding = new Padding(3) };
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -209,7 +201,7 @@ namespace FFLiteGUI.Forms
             ioGroup.Controls.Add(ioLayout);
             topLayout.Controls.Add(ioGroup, 0, 0);
 
-            // 预设组
+            // ---------- 参数预设组 ----------
             presetGroup = new GroupBox { Text = "参数预设", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var presetLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(3) };
             presetLayout.Controls.Add(new Label { Text = "预设名称:" });
@@ -231,7 +223,7 @@ namespace FFLiteGUI.Forms
             presetGroup.Controls.Add(presetLayout);
             topLayout.Controls.Add(presetGroup, 0, 1);
 
-            // 标签页
+            // ---------- 标签页 ----------
             topTabControl = new TabControl { Dock = DockStyle.Fill };
             transcodePage = new TabPage("视频转码");
             transcodeSubTab = new TabControl { Dock = DockStyle.Fill };
@@ -253,13 +245,13 @@ namespace FFLiteGUI.Forms
             CreateVideoFiltersTab();
             CreateAudioTab();
 
-            // 命令预览
+            // ---------- 命令预览 ----------
             previewGroup = new GroupBox { Text = "当前命令模板", Dock = DockStyle.Fill, Padding = new Padding(3) };
             txtCommandPreview = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9), BackColor = Color.LightYellow };
             previewGroup.Controls.Add(txtCommandPreview);
             topLayout.Controls.Add(previewGroup, 0, 3);
 
-            // 单文件转码按钮行
+            // ---------- 单文件转码按钮行 ----------
             singleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
             btnSingleTranscode = new Button { Text = "开始编码", BackColor = Color.LightGreen, Width = 120 };
             btnSingleTranscode.Click += (s, e) => TranscodeSingle();
@@ -269,8 +261,8 @@ namespace FFLiteGUI.Forms
             singleRow.Controls.Add(btnRefreshPreview);
             topLayout.Controls.Add(singleRow, 0, 4);
 
-            // 队列控制行
-            queueRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
+            // ---------- 队列控制行 ----------
+            queueRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40, WrapContents = false };
             btnStartQueue = new Button { Text = "开始队列", BackColor = Color.LightGreen, Width = 100 };
             btnStartQueue.Click += (s, e) => StartQueue();
             queueRow.Controls.Add(btnStartQueue);
@@ -296,7 +288,7 @@ namespace FFLiteGUI.Forms
             queueRow.Controls.Add(nudMaxHwParallel);
             topLayout.Controls.Add(queueRow, 0, 5);
 
-            // 任务列表
+            // ========== 下半部：任务列表 ==========
             var taskGroup = new GroupBox { Text = "任务队列", Dock = DockStyle.Fill, Padding = new Padding(3) };
             lvTasks = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true };
             lvTasks.Columns.Add("文件名", 150);
@@ -306,9 +298,9 @@ namespace FFLiteGUI.Forms
             lvTasks.Columns.Add("错误信息", 200);
             lvTasks.DoubleClick += (s, e) => EditSelectedTask();
             taskGroup.Controls.Add(lvTasks);
-            bottomPanel.Controls.Add(taskGroup);
+            splitVertical.Panel2.Controls.Add(taskGroup);
 
-            // 右侧日志
+            // ========== 右侧：日志区域 ==========
             var rightLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1, Padding = new Padding(5) };
             rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));

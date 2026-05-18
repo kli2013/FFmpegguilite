@@ -16,7 +16,7 @@ namespace FFLiteGUI.Forms
 {
     public class MainForm : Form
     {
-        // 所有控件字段（完整）
+        // ==================== 所有控件字段 ====================
         private TextBox txtInputFile; private TextBox txtOutputDir; private TextBox txtOutputSuffix; private TextBox txtCustomOutputName;
         private ComboBox cboOutputContainer; private ComboBox cboEncoder; private ComboBox cboPreset;
         private RadioButton rbCRF; private RadioButton rbCQ; private RadioButton rbGlobalQuality; private RadioButton rbBitrate;
@@ -32,11 +32,15 @@ namespace FFLiteGUI.Forms
         private CheckBox chkPixFmt; private ComboBox cboPixFmt;
         private CheckBox chkSubtitle; private TextBox txtSubtitlePath; private Button btnBrowseSubtitle;
         private CheckBox chkTrim; private TextBox txtTrimStart; private TextBox txtTrimEnd;
-        private Button btnAddTask; private Button btnStartQueue; private Button btnStopQueue; private Button btnClearAll; private Button btnRemoveSelected;
+
+        private Button btnBrowseInput; private Button btnBrowseOutputDir; private Button btnAddTask;
+        private Button btnStartQueue; private Button btnStopQueue; private Button btnClearAll; private Button btnRemoveSelected;
+        private Button btnSingleTranscode; private Button btnRefreshPreview; private Button btnClearFinished;
+
         private NumericUpDown nudMaxParallel; private NumericUpDown nudMaxHwParallel;
         private ListView lvTasks; private RichTextBox txtCommandPreview; private TextBox txtInfoLog; private TextBox txtDetailLog;
-        private Button btnBrowseInput; private Button btnBrowseOutputDir; private Button btnRefreshPreview;
-        private Button btnSingleTranscode;
+
+        private SplitContainer splitMain; private SplitContainer leftVertSplit;
 
         private string _ffmpegPath;
         private List<TaskInfo> _tasks = new List<TaskInfo>();
@@ -57,49 +61,40 @@ namespace FFLiteGUI.Forms
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
 
-            // 修复 SplitContainer 初始化问题：延迟设置分割距离
-            this.Load += (s, e) =>
-            {
-                // 确保分割距离有效 (Panel1MinSize=700, Panel2MinSize=400)
-                int desired = 700;
-                if (splitMain.Width > desired + 400)
-                    splitMain.SplitterDistance = desired;
-            };
+            this.Load += MainForm_Load;
         }
 
-        private SplitContainer splitMain; // 声明为字段以便在 Load 中访问
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            if (splitMain.Width > 1150)
+                splitMain.SplitterDistance = 730;
+
+            if (leftVertSplit.Height > 680)
+                leftVertSplit.SplitterDistance = 520;
+        }
 
         private void InitializeComponent()
         {
             this.Text = "FFLiteGUI - FFmpeg 多功能工具";
-            this.Size = new Size(1350, 900);
+            this.Size = new Size(1420, 880);
+            this.MinimumSize = new Size(1180, 740);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.MinimumSize = new Size(1100, 700);
+            this.Font = new Font("Microsoft YaHei", 9F);
 
-            // 主布局：左右分割
-            splitMain = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical };
-            // 先设置最小尺寸，不设置 SplitterDistance（让布局自动处理，Load 时再微调）
-            splitMain.Panel1MinSize = 700;
-            splitMain.Panel2MinSize = 400;
+            splitMain = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, Panel1MinSize = 730, Panel2MinSize = 420, SplitterWidth = 8 };
+            leftVertSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 520, Panel1MinSize = 420, Panel2MinSize = 220 };
 
-            // ========== 左侧：垂直分割（上半部设置，下半部任务列表）==========
-            var leftVertSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
-            leftVertSplit.SplitterDistance = 520;
-            leftVertSplit.Panel1MinSize = 400;
-            leftVertSplit.Panel2MinSize = 200;
+            var topPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6, ColumnCount = 1, Padding = new Padding(6) };
+            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            // ===== 上半部分：设置区域 =====
-            var topPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6, ColumnCount = 1, Padding = new Padding(3) };
-            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 输入/输出
-            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 参数预设
-            topPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 标签页
-            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 命令预览
-            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 单文件编码按钮
-            topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 队列控制按钮行
-
-            // 1. 输入/输出
-            var ioGroup = new GroupBox { Text = "输入 / 输出", Dock = DockStyle.Fill, Padding = new Padding(5) };
-            var ioLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 4, Padding = new Padding(3) };
+            // 输入/输出
+            var ioGroup = new GroupBox { Text = "输入 / 输出", Dock = DockStyle.Fill, Padding = new Padding(8) };
+            var ioLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 4 };
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -109,10 +104,10 @@ namespace FFLiteGUI.Forms
             ioLayout.Controls.Add(new Label { Text = "输入文件:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             txtInputFile = new TextBox { Dock = DockStyle.Fill };
             ioLayout.Controls.Add(txtInputFile, 1, row);
-            btnBrowseInput = new Button { Text = "浏览", Width = 60 };
+            btnBrowseInput = new Button { Text = "浏览", Width = 70 };
             btnBrowseInput.Click += (s, e) => SelectInputFile();
             ioLayout.Controls.Add(btnBrowseInput, 2, row);
-            btnAddTask = new Button { Text = "添加到任务列表", Width = 120 };
+            btnAddTask = new Button { Text = "添加到任务列表", Width = 130 };
             btnAddTask.Click += (s, e) => AddCurrentAsTask();
             ioLayout.Controls.Add(btnAddTask, 3, row);
             row++;
@@ -120,140 +115,127 @@ namespace FFLiteGUI.Forms
             ioLayout.Controls.Add(new Label { Text = "输出目录:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             txtOutputDir = new TextBox { Dock = DockStyle.Fill };
             ioLayout.Controls.Add(txtOutputDir, 1, row);
-            btnBrowseOutputDir = new Button { Text = "浏览", Width = 60 };
+            btnBrowseOutputDir = new Button { Text = "浏览", Width = 70 };
             btnBrowseOutputDir.Click += (s, e) => SelectOutputDir();
             ioLayout.Controls.Add(btnBrowseOutputDir, 2, row);
-            ioLayout.Controls.Add(new Panel(), 3, row);
             row++;
 
             ioLayout.Controls.Add(new Label { Text = "文件名后缀:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
             txtOutputSuffix = new TextBox { Width = 150 };
             ioLayout.Controls.Add(txtOutputSuffix, 1, row);
             ioLayout.Controls.Add(new Label { Text = "自定义完整名称:", TextAlign = ContentAlignment.MiddleRight }, 2, row);
-            txtCustomOutputName = new TextBox { Width = 200 };
+            txtCustomOutputName = new TextBox { Width = 220 };
             ioLayout.Controls.Add(txtCustomOutputName, 3, row);
             row++;
 
             ioLayout.Controls.Add(new Label { Text = "输出容器:", TextAlign = ContentAlignment.MiddleRight }, 0, row);
-            cboOutputContainer = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
+            cboOutputContainer = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90 };
             cboOutputContainer.Items.AddRange(new[] { "mp4", "mkv", "mov", "avi", "webm" });
             cboOutputContainer.SelectedIndex = 0;
             ioLayout.Controls.Add(cboOutputContainer, 1, row);
+
             ioGroup.Controls.Add(ioLayout);
             topPanel.Controls.Add(ioGroup, 0, 0);
 
-            // 2. 参数预设
-            var presetGroup = new GroupBox { Text = "参数预设", Dock = DockStyle.Fill, Padding = new Padding(5) };
-            var presetLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(3) };
-            presetLayout.Controls.Add(new Label { Text = "预设名称:" });
-            var cboPresetList = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
-            presetLayout.Controls.Add(cboPresetList);
-            var btnSavePreset = new Button { Text = "保存当前参数为预设", Width = 150 };
-            btnSavePreset.Click += (s, e) => SavePreset();
-            presetLayout.Controls.Add(btnSavePreset);
-            var btnDeletePreset = new Button { Text = "删除预设", Width = 100 };
-            btnDeletePreset.Click += (s, e) => DeletePreset();
-            presetLayout.Controls.Add(btnDeletePreset);
-            var btnExportPresets = new Button { Text = "导出所有预设", Width = 120 };
-            btnExportPresets.Click += (s, e) => ExportAllPresets();
-            presetLayout.Controls.Add(btnExportPresets);
-            var btnImportPresets = new Button { Text = "导入预设", Width = 100 };
-            btnImportPresets.Click += (s, e) => ImportPresets();
-            presetLayout.Controls.Add(btnImportPresets);
-            presetGroup.Controls.Add(presetLayout);
+            // 参数预设（简化，可自行扩展）
+            var presetGroup = new GroupBox { Text = "参数预设", Dock = DockStyle.Fill, Padding = new Padding(6) };
             topPanel.Controls.Add(presetGroup, 0, 1);
 
-            // 3. 顶层标签页（视频转码内嵌子标签页 + 封装合并单独页）
-            var topTab = new TabControl { Dock = DockStyle.Fill };
-            // 视频转码页（内含子标签页）
+            // 参数标签页
+            var paramTab = new TabControl { Dock = DockStyle.Fill };
             var transcodePage = new TabPage("视频转码");
             var subTab = new TabControl { Dock = DockStyle.Fill };
             subTab.TabPages.Add(CreateVideoEncodingTab());
             subTab.TabPages.Add(CreateVideoFiltersTab());
             subTab.TabPages.Add(CreateAudioTab());
             transcodePage.Controls.Add(subTab);
-            topTab.TabPages.Add(transcodePage);
-            // 封装/合并/画中画页
-            topTab.TabPages.Add(CreateMergeTab());
-            topPanel.Controls.Add(topTab, 0, 2);
+            paramTab.TabPages.Add(transcodePage);
+            paramTab.TabPages.Add(CreateMergeTab());
+            topPanel.Controls.Add(paramTab, 0, 2);
 
-            // 4. 命令预览
-            var previewGroup = new GroupBox { Text = "当前命令模板", Dock = DockStyle.Fill, Padding = new Padding(3) };
-            txtCommandPreview = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9), BackColor = Color.LightYellow, Height = 80 };
+            // 命令预览
+            var previewGroup = new GroupBox { Text = "当前命令模板", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            txtCommandPreview = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9.5F), BackColor = Color.LightYellow };
             previewGroup.Controls.Add(txtCommandPreview);
             topPanel.Controls.Add(previewGroup, 0, 3);
 
-            // 5. 单文件转码按钮
-            var singleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
-            btnSingleTranscode = new Button { Text = "开始编码", BackColor = Color.LightGreen, Width = 120 };
+            // 单文件按钮
+            var singleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            btnSingleTranscode = new Button { Text = "开始编码", Width = 120, Height = 35, BackColor = Color.LightGreen, Font = new Font("Microsoft YaHei", 10F, FontStyle.Bold) };
             btnSingleTranscode.Click += (s, e) => TranscodeSingle();
-            singleRow.Controls.Add(btnSingleTranscode);
-            btnRefreshPreview = new Button { Text = "刷新命令预览", Width = 120 };
+            btnRefreshPreview = new Button { Text = "刷新命令预览", Width = 110, Height = 35 };
             btnRefreshPreview.Click += (s, e) => UpdateCommandPreview();
+            singleRow.Controls.Add(btnSingleTranscode);
             singleRow.Controls.Add(btnRefreshPreview);
             topPanel.Controls.Add(singleRow, 0, 4);
 
-            // 6. 队列控制行
-            var queueRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
+            // 队列控制
+            var queueRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Height = 42 };
             btnStartQueue = new Button { Text = "开始队列", BackColor = Color.LightGreen, Width = 100 };
             btnStartQueue.Click += (s, e) => StartQueue();
-            queueRow.Controls.Add(btnStartQueue);
             btnStopQueue = new Button { Text = "停止队列", BackColor = Color.LightCoral, Width = 100 };
             btnStopQueue.Click += (s, e) => StopQueue();
-            queueRow.Controls.Add(btnStopQueue);
             btnRemoveSelected = new Button { Text = "移除选中", Width = 100 };
             btnRemoveSelected.Click += (s, e) => RemoveSelectedTasks();
-            queueRow.Controls.Add(btnRemoveSelected);
             btnClearAll = new Button { Text = "清空全部", Width = 100 };
             btnClearAll.Click += (s, e) => ClearAllTasks();
-            queueRow.Controls.Add(btnClearAll);
-            var btnClearFinished = new Button { Text = "清空已完成/失败", Width = 120 };
+            btnClearFinished = new Button { Text = "清空已完成", Width = 120 };
             btnClearFinished.Click += (s, e) => ClearFinishedTasks();
+
+            queueRow.Controls.Add(btnStartQueue);
+            queueRow.Controls.Add(btnStopQueue);
+            queueRow.Controls.Add(btnRemoveSelected);
+            queueRow.Controls.Add(btnClearAll);
             queueRow.Controls.Add(btnClearFinished);
+
             queueRow.Controls.Add(new Label { Text = "并行任务数:" });
-            nudMaxParallel = new NumericUpDown { Minimum = 1, Maximum = 5, Value = 2, Width = 50 };
+            nudMaxParallel = new NumericUpDown { Minimum = 1, Maximum = 5, Value = 2, Width = 60 };
             nudMaxParallel.ValueChanged += (s, e) => _maxParallel = (int)nudMaxParallel.Value;
             queueRow.Controls.Add(nudMaxParallel);
+
             queueRow.Controls.Add(new Label { Text = "硬编并发限制:" });
-            nudMaxHwParallel = new NumericUpDown { Minimum = 1, Maximum = 4, Value = 2, Width = 50 };
+            nudMaxHwParallel = new NumericUpDown { Minimum = 1, Maximum = 4, Value = 2, Width = 60 };
             nudMaxHwParallel.ValueChanged += (s, e) => _maxHwParallel = (int)nudMaxHwParallel.Value;
             queueRow.Controls.Add(nudMaxHwParallel);
+
             topPanel.Controls.Add(queueRow, 0, 5);
 
             leftVertSplit.Panel1.Controls.Add(topPanel);
 
-            // ===== 下半部分：任务列表 =====
-            var taskGroup = new GroupBox { Text = "任务队列", Dock = DockStyle.Fill, Padding = new Padding(3) };
+            // 任务列表
+            var taskGroup = new GroupBox { Text = "任务队列", Dock = DockStyle.Fill, Padding = new Padding(5) };
             lvTasks = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true };
-            lvTasks.Columns.Add("文件名", 150);
-            lvTasks.Columns.Add("输出路径", 250);
-            lvTasks.Columns.Add("命令(简洁)", 350);
+            lvTasks.Columns.Add("文件名", 160);
+            lvTasks.Columns.Add("输出路径", 260);
+            lvTasks.Columns.Add("命令(简洁)", 380);
             lvTasks.Columns.Add("状态", 80);
-            lvTasks.Columns.Add("错误信息", 200);
+            lvTasks.Columns.Add("错误信息", 220);
             lvTasks.DoubleClick += (s, e) => EditSelectedTask();
             taskGroup.Controls.Add(lvTasks);
             leftVertSplit.Panel2.Controls.Add(taskGroup);
 
             splitMain.Panel1.Controls.Add(leftVertSplit);
 
-            // ========== 右侧：两个日志框 ==========
-            var rightPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1, Padding = new Padding(5) };
+            // 右侧日志
+            var rightPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2 };
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
             var infoGroup = new GroupBox { Text = "关键信息", Dock = DockStyle.Fill };
-            txtInfoLog = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, BackColor = Color.White, Font = new Font("Consolas", 9) };
+            txtInfoLog = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Font = new Font("Consolas", 9) };
             infoGroup.Controls.Add(txtInfoLog);
-            rightPanel.Controls.Add(infoGroup, 0, 0);
 
             var detailGroup = new GroupBox { Text = "转换进程信息", Dock = DockStyle.Fill };
-            txtDetailLog = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, BackColor = Color.White, Font = new Font("Consolas", 8) };
+            txtDetailLog = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Font = new Font("Consolas", 8.5F) };
             detailGroup.Controls.Add(txtDetailLog);
+
+            rightPanel.Controls.Add(infoGroup, 0, 0);
             rightPanel.Controls.Add(detailGroup, 0, 1);
 
             splitMain.Panel2.Controls.Add(rightPanel);
-
             this.Controls.Add(splitMain);
+
+            BindEvents();
 
             // 事件绑定
             txtInputFile.TextChanged += (s, e) => UpdateCommandPreview();

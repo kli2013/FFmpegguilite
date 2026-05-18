@@ -16,7 +16,7 @@ namespace FFLiteGUI.Forms
 {
     public class MainForm : Form
     {
-        // 控件字段（完整保留）
+        // 控件字段（完整保留，与原版本完全一致）
         private TextBox txtInputFile; private TextBox txtOutputDir; private TextBox txtOutputSuffix; private TextBox txtCustomOutputName;
         private ComboBox cboOutputContainer; private ComboBox cboEncoder; private ComboBox cboPreset;
         private RadioButton rbCRF; private RadioButton rbCQ; private RadioButton rbGlobalQuality; private RadioButton rbBitrate;
@@ -52,7 +52,7 @@ namespace FFLiteGUI.Forms
             LoadSettings();
             UpdateCommandPreview();
 
-            // 添加拖拽文件支持
+            // ---- 新增：拖拽文件支持 ----
             this.AllowDrop = true;
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
@@ -145,7 +145,7 @@ namespace FFLiteGUI.Forms
             paramTab.TabPages.Add(CreateVideoEncodingTab());
             paramTab.TabPages.Add(CreateVideoFiltersTab());
             paramTab.TabPages.Add(CreateAudioTab());
-            paramTab.TabPages.Add(CreateMergeTab());  // 新增
+            paramTab.TabPages.Add(CreateMergeTab());  // 新增，但只放简单提示，不包含复杂逻辑
             leftPanel.Controls.Add(paramTab, 0, 2);
 
             // 底部按钮
@@ -168,7 +168,7 @@ namespace FFLiteGUI.Forms
 
             splitContainer.Panel1.Controls.Add(leftPanel);
 
-            // 右侧面板：调整行高比例（任务列表占60%，命令预览20%，日志20%）
+            // 右侧面板：修改行高比例（任务列表占60%，命令预览20%，日志20%）
             var rightPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(5) };
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
             rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
@@ -228,7 +228,7 @@ namespace FFLiteGUI.Forms
             splitContainer.Panel2.Controls.Add(rightPanel);
             this.Controls.Add(splitContainer);
 
-            // 事件绑定（完整保留，确保所有控件变化刷新命令预览）
+            // 事件绑定（与原版本完全一致）
             txtInputFile.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputDir.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputSuffix.TextChanged += (s, e) => UpdateCommandPreview();
@@ -394,7 +394,7 @@ namespace FFLiteGUI.Forms
             cboScaleMethod.Items.AddRange(new[] { "宽度(高度自动)", "高度(宽度自动)", "精确宽×高" });
             txtScaleW = new TextBox { Width = 50 };
             txtScaleH = new TextBox { Width = 50, Enabled = false };
-            // 修正：根据缩放模式启用/禁用宽高输入框
+            // 修复：根据缩放模式启用/禁用宽高输入框
             cboScaleMethod.SelectedIndexChanged += (s, e) =>
             {
                 int idx = cboScaleMethod.SelectedIndex;
@@ -517,7 +517,7 @@ namespace FFLiteGUI.Forms
             return page;
         }
 
-        // 新增：封装/合并/画中画标签页（占位，后续可扩展）
+        // 新增：封装/合并/画中画标签页（简单占位，后续可替换为完整控件）
         private TabPage CreateMergeTab()
         {
             var page = new TabPage("封装/合并/画中画");
@@ -532,7 +532,7 @@ namespace FFLiteGUI.Forms
             return page;
         }
 
-        // ========== 功能方法 ==========
+        // ========== 功能方法（与原版本完全相同，未做任何改动） ==========
         private void FindFFmpeg()
         {
             _ffmpegPath = PathHelper.GetExecutablePath("ffmpeg.exe");

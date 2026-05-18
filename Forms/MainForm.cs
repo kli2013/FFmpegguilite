@@ -84,7 +84,8 @@ namespace FFLiteGUI.Forms
         // 音频页控件
         private CheckBox chkAudioEnabled;
         private ComboBox cboAudioCodec;
-        private TextBox txtAudioBitrate, txtAudioSamplerate;
+        private ComboBox cboAudioBitrate;
+        private ComboBox cboAudioSamplerate;
         private CheckBox chkOnlyAudio;
         private ComboBox cboAudioFormat;
 
@@ -645,7 +646,7 @@ namespace FFLiteGUI.Forms
 
         private void CreateAudioTab()
         {
-            // 主布局：两行两列（第二行使用 FlowLayoutPanel 实现水平排列）
+            // 主布局：两行（使用 FlowLayoutPanel 实现水平排列）
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10) };
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -671,13 +672,11 @@ namespace FFLiteGUI.Forms
             cboAudioCodec.SelectedIndex = 0;
             row1Panel.Controls.Add(cboAudioCodec);
             row1Panel.Controls.Add(new Label { Text = "比特率:", TextAlign = ContentAlignment.MiddleRight, Padding = new Padding(10, 0, 5, 0) });
-            // 使用 ComboBox 替代 TextBox，提供常用比特率选项
             cboAudioBitrate = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
             cboAudioBitrate.Items.AddRange(new[] { "64k", "96k", "128k", "192k", "256k", "320k" });
             cboAudioBitrate.SelectedItem = "128k";
             row1Panel.Controls.Add(cboAudioBitrate);
             row1Panel.Controls.Add(new Label { Text = "采样率:", TextAlign = ContentAlignment.MiddleRight, Padding = new Padding(10, 0, 5, 0) });
-            // 使用 ComboBox 替代 TextBox，提供常用采样率选项
             cboAudioSamplerate = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 90 };
             cboAudioSamplerate.Items.AddRange(new[] { "8000", "12000", "16000", "22050", "32000", "44100", "48000", "96000" });
             cboAudioSamplerate.SelectedItem = "44100";
@@ -686,7 +685,7 @@ namespace FFLiteGUI.Forms
         
             audioPage.Controls.Add(layout);
         
-            // 绑定事件（使修改后能刷新命令预览）
+            // 绑定事件
             chkAudioEnabled.CheckedChanged += (s, e) => UpdateCommandPreview();
             chkOnlyAudio.CheckedChanged += (s, e) => UpdateCommandPreview();
             cboAudioFormat.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
@@ -716,8 +715,8 @@ namespace FFLiteGUI.Forms
             txtCustomArgs.TextChanged += (s, e) => UpdateCommandPreview();
             chkAudioEnabled.CheckedChanged += (s, e) => UpdateCommandPreview();
             cboAudioCodec.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
-            txtAudioBitrate.TextChanged += (s, e) => UpdateCommandPreview();
-            txtAudioSamplerate.TextChanged += (s, e) => UpdateCommandPreview();
+            cboAudioBitrate.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            cboAudioSamplerate.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             chkOnlyAudio.CheckedChanged += (s, e) => UpdateCommandPreview();
             cboAudioFormat.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
             cboFrameRateType.SelectedIndexChanged += (s, e) => { txtFrameRateCustom.Enabled = cboFrameRateType.SelectedIndex == 1; UpdateCommandPreview(); };
@@ -792,8 +791,8 @@ namespace FFLiteGUI.Forms
             s.OutputContainer = cboOutputContainer.SelectedItem?.ToString();
             s.AudioEnabled = chkAudioEnabled.Checked;
             s.AudioCodec = cboAudioCodec.SelectedItem?.ToString();
-            s.AudioBitrate = txtAudioBitrate.Text;
-            s.AudioSamplerate = txtAudioSamplerate.Text;
+            s.AudioBitrate = cboAudioBitrate.SelectedItem?.ToString() ?? "128k";
+            s.AudioSamplerate = cboAudioSamplerate.SelectedItem?.ToString() ?? "44100";
             s.OnlyAudio = chkOnlyAudio.Checked;
             s.AudioFormat = cboAudioFormat.SelectedItem?.ToString();
             s.FrameRateType = cboFrameRateType.SelectedIndex == 0 ? "keep" : "custom";
@@ -1200,8 +1199,8 @@ namespace FFLiteGUI.Forms
             cboOutputContainer.SelectedItem = settings.OutputContainer;
             chkAudioEnabled.Checked = settings.AudioEnabled;
             cboAudioCodec.SelectedItem = settings.AudioCodec;
-            txtAudioBitrate.Text = settings.AudioBitrate;
-            txtAudioSamplerate.Text = settings.AudioSamplerate;
+            cboAudioBitrate.SelectedItem = settings.AudioBitrate;
+            cboAudioSamplerate.SelectedItem = settings.AudioSamplerate;
             chkOnlyAudio.Checked = settings.OnlyAudio;
             cboAudioFormat.SelectedItem = settings.AudioFormat;
             cboFrameRateType.SelectedIndex = settings.FrameRateType == "keep" ? 0 : 1;

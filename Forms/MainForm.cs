@@ -16,39 +16,42 @@ namespace FFLiteGUI.Forms
 {
     public class MainForm : Form
     {
-        // ----- 布局控件 -----
+        // 布局控件
         private TableLayoutPanel mainLayout;
-        private Panel leftContainer;          // 左侧整体容器（用于手动上下分割）
-        private Panel topPanel;               // 上半部：设置区
-        private Panel bottomPanel;            // 下半部：任务列表
+        private Panel leftContainer;
+        private Panel topPanel;
+        private Panel bottomPanel;
         private Panel rightPanel;
 
-        // ----- 设置区域控件（与之前相同）-----
+        // 输入/输出组
         private GroupBox ioGroup;
         private TextBox txtInputFile, txtOutputDir, txtOutputSuffix, txtCustomOutputName;
         private ComboBox cboOutputContainer;
         private Button btnBrowseInput, btnBrowseOutputDir, btnAddTask;
 
+        // 预设组
         private GroupBox presetGroup;
         private ComboBox cboPresetList;
         private Button btnSavePreset, btnDeletePreset, btnExportPresets, btnImportPresets;
 
+        // 标签页
         private TabControl topTabControl;
         private TabPage transcodePage;
         private TabControl transcodeSubTab;
         private TabPage videoEncodingPage, videoFiltersPage, audioPage;
 
+        // 命令预览
         private GroupBox previewGroup;
         private RichTextBox txtCommandPreview;
 
+        // 按钮行
         private FlowLayoutPanel singleRow;
         private Button btnSingleTranscode, btnRefreshPreview;
-
         private FlowLayoutPanel queueRow;
         private Button btnStartQueue, btnStopQueue, btnRemoveSelected, btnClearAll, btnClearFinished;
         private NumericUpDown nudMaxParallel, nudMaxHwParallel;
 
-        // 视频编码页
+        // 视频编码页控件
         private ComboBox cboEncoder, cboPreset;
         private RadioButton rbCRF, rbCQ, rbGlobalQuality, rbBitrate;
         private TrackBar trkCRF, trkCQ, trkGlobalQuality;
@@ -58,7 +61,7 @@ namespace FFLiteGUI.Forms
         private ComboBox cboHwaccelDecoder;
         private TextBox txtCustomArgs;
 
-        // 视频滤镜页
+        // 视频滤镜页控件
         private ComboBox cboFrameRateType;
         private TextBox txtFrameRateCustom;
         private CheckBox chkScale;
@@ -79,14 +82,14 @@ namespace FFLiteGUI.Forms
         private CheckBox chkTrim;
         private TextBox txtTrimStart, txtTrimEnd;
 
-        // 音频页
+        // 音频页控件
         private CheckBox chkAudioEnabled;
         private ComboBox cboAudioCodec;
         private TextBox txtAudioBitrate, txtAudioSamplerate;
         private CheckBox chkOnlyAudio;
         private ComboBox cboAudioFormat;
 
-        // 右侧日志
+        // 日志控件
         private RichTextBox txtInfoLog, txtDetailLog;
 
         // 任务列表
@@ -98,7 +101,8 @@ namespace FFLiteGUI.Forms
         private bool _isProcessing;
         private CancellationTokenSource _cts;
         private SemaphoreSlim _hwSemaphore;
-        private int _maxParallel = 2, _maxHwParallel = 2;
+        private int _maxParallel = 2;
+        private int _maxHwParallel = 2;
 
         public MainForm()
         {
@@ -111,7 +115,7 @@ namespace FFLiteGUI.Forms
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
 
-            // 关键：手动调整上下区域的比例（上60% 下40%）
+            // 调整上下区域比例
             this.Resize += (s, e) => AdjustTopBottomRatio();
             AdjustTopBottomRatio();
         }
@@ -133,35 +137,34 @@ namespace FFLiteGUI.Forms
             this.StartPosition = FormStartPosition.CenterScreen;
             this.MinimumSize = new Size(1100, 700);
 
-            // 主布局：左右两列
+            // 主布局
             mainLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 420f));
 
             leftContainer = new Panel { Dock = DockStyle.Fill };
             rightPanel = new Panel { Dock = DockStyle.Fill };
-
             mainLayout.Controls.Add(leftContainer, 0, 0);
             mainLayout.Controls.Add(rightPanel, 1, 0);
             this.Controls.Add(mainLayout);
 
-            // 左侧上下两个 Panel（手动分割）
-            topPanel = new Panel { Dock = DockStyle.Top, Height = 500 };   // 初始高度，之后会被 Resize 覆盖
+            // 左侧手动分割上下
+            topPanel = new Panel { Dock = DockStyle.Top, Height = 500 };
             bottomPanel = new Panel { Dock = DockStyle.Fill };
             leftContainer.Controls.Add(bottomPanel);
             leftContainer.Controls.Add(topPanel);
 
-            // ========== 上半部：设置区域（与之前完全一样，只是放入 topPanel）==========
+            // 上部设置区 TableLayout
             var topLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6, ColumnCount = 1, Padding = new Padding(3) };
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 输入/输出
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 参数预设
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // 标签页
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 命令预览
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 单文件编码按钮
-            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 队列控制按钮行
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            topLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             topPanel.Controls.Add(topLayout);
 
-            // ---------- 输入/输出组 ----------
+            // 输入/输出组
             ioGroup = new GroupBox { Text = "输入 / 输出", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var ioLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 4, Padding = new Padding(3) };
             ioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -206,7 +209,7 @@ namespace FFLiteGUI.Forms
             ioGroup.Controls.Add(ioLayout);
             topLayout.Controls.Add(ioGroup, 0, 0);
 
-            // ---------- 参数预设组 ----------
+            // 预设组
             presetGroup = new GroupBox { Text = "参数预设", Dock = DockStyle.Fill, Padding = new Padding(5) };
             var presetLayout = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(3) };
             presetLayout.Controls.Add(new Label { Text = "预设名称:" });
@@ -228,7 +231,7 @@ namespace FFLiteGUI.Forms
             presetGroup.Controls.Add(presetLayout);
             topLayout.Controls.Add(presetGroup, 0, 1);
 
-            // ---------- 标签页 ----------
+            // 标签页
             topTabControl = new TabControl { Dock = DockStyle.Fill };
             transcodePage = new TabPage("视频转码");
             transcodeSubTab = new TabControl { Dock = DockStyle.Fill };
@@ -240,24 +243,23 @@ namespace FFLiteGUI.Forms
             transcodeSubTab.TabPages.Add(audioPage);
             transcodePage.Controls.Add(transcodeSubTab);
             topTabControl.TabPages.Add(transcodePage);
-            // 封装/合并页占位
             var mergePage = new TabPage("封装/合并/画中画");
             mergePage.Controls.Add(new Label { Text = "此功能正在开发中", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
             topTabControl.TabPages.Add(mergePage);
             topLayout.Controls.Add(topTabControl, 0, 2);
 
-            // 创建子页内容（与之前相同，这里只调用方法，具体实现见下方）
+            // 创建子页内容
             CreateVideoEncodingTab();
             CreateVideoFiltersTab();
             CreateAudioTab();
 
-            // ---------- 命令预览 ----------
+            // 命令预览
             previewGroup = new GroupBox { Text = "当前命令模板", Dock = DockStyle.Fill, Padding = new Padding(3) };
-            txtCommandPreview = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9), BackColor = Color.LightYellow, Height = 80 };
+            txtCommandPreview = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 9), BackColor = Color.LightYellow };
             previewGroup.Controls.Add(txtCommandPreview);
             topLayout.Controls.Add(previewGroup, 0, 3);
 
-            // ---------- 单文件转码按钮行 ----------
+            // 单文件转码按钮行
             singleRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
             btnSingleTranscode = new Button { Text = "开始编码", BackColor = Color.LightGreen, Width = 120 };
             btnSingleTranscode.Click += (s, e) => TranscodeSingle();
@@ -267,7 +269,7 @@ namespace FFLiteGUI.Forms
             singleRow.Controls.Add(btnRefreshPreview);
             topLayout.Controls.Add(singleRow, 0, 4);
 
-            // ---------- 队列控制行 ----------
+            // 队列控制行
             queueRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(3), Height = 40 };
             btnStartQueue = new Button { Text = "开始队列", BackColor = Color.LightGreen, Width = 100 };
             btnStartQueue.Click += (s, e) => StartQueue();
@@ -294,7 +296,7 @@ namespace FFLiteGUI.Forms
             queueRow.Controls.Add(nudMaxHwParallel);
             topLayout.Controls.Add(queueRow, 0, 5);
 
-            // ========== 下半部：任务列表 ==========
+            // 任务列表
             var taskGroup = new GroupBox { Text = "任务队列", Dock = DockStyle.Fill, Padding = new Padding(3) };
             lvTasks = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true };
             lvTasks.Columns.Add("文件名", 150);
@@ -306,7 +308,7 @@ namespace FFLiteGUI.Forms
             taskGroup.Controls.Add(lvTasks);
             bottomPanel.Controls.Add(taskGroup);
 
-            // ========== 右侧：日志区域 ==========
+            // 右侧日志
             var rightLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1, Padding = new Padding(5) };
             rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
             rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
@@ -323,14 +325,11 @@ namespace FFLiteGUI.Forms
 
             rightPanel.Controls.Add(rightLayout);
 
-            // 绑定预览事件
             BindPreviewEvents();
         }
 
-        // ================= 创建各个标签页的完整代码 =================
-        private TabPage CreateVideoEncodingTab()
+        private void CreateVideoEncodingTab()
         {
-            var page = new TabPage("视频编码");
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Padding = new Padding(5) };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
@@ -418,13 +417,11 @@ namespace FFLiteGUI.Forms
             rightGroup.Controls.Add(rightLayout);
             layout.Controls.Add(rightGroup, 1, 0);
 
-            page.Controls.Add(layout);
-            return page;
+            videoEncodingPage.Controls.Add(layout);
         }
 
-        private TabPage CreateVideoFiltersTab()
+        private void CreateVideoFiltersTab()
         {
-            var page = new TabPage("视频滤镜");
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 12, Padding = new Padding(5), AutoSize = true };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -524,13 +521,11 @@ namespace FFLiteGUI.Forms
             trimPanel.Controls.AddRange(new Control[] { new Label { Text = "开始:" }, txtTrimStart, new Label { Text = "结束:" }, txtTrimEnd });
             layout.Controls.Add(trimPanel, 1, row++);
 
-            page.Controls.Add(layout);
-            return page;
+            videoFiltersPage.Controls.Add(layout);
         }
 
-        private TabPage CreateAudioTab()
+        private void CreateAudioTab()
         {
-            var page = new TabPage("音频");
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 7, Padding = new Padding(10) };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -563,22 +558,58 @@ namespace FFLiteGUI.Forms
             txtAudioSamplerate = new TextBox { Text = "44100", Width = 80 };
             layout.Controls.Add(txtAudioSamplerate, 1, row++);
 
-            page.Controls.Add(layout);
-            return page;
+            audioPage.Controls.Add(layout);
         }
 
-        private TabPage CreateMergeTab()
+        private void BindPreviewEvents()
         {
-            var page = new TabPage("封装/合并/画中画");
-            var label = new Label
-            {
-                Text = "此功能正在开发中，后续版本将提供完整的封装、合并、画中画功能。",
-                TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Fill,
-                Font = new Font("Microsoft YaHei", 12)
-            };
-            page.Controls.Add(label);
-            return page;
+            txtInputFile.TextChanged += (s, e) => UpdateCommandPreview();
+            txtOutputDir.TextChanged += (s, e) => UpdateCommandPreview();
+            txtOutputSuffix.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCustomOutputName.TextChanged += (s, e) => UpdateCommandPreview();
+            cboOutputContainer.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            cboEncoder.SelectedIndexChanged += (s, e) => { OnEncoderChanged(); UpdateCommandPreview(); };
+            rbCRF.CheckedChanged += (s, e) => UpdateCommandPreview();
+            rbCQ.CheckedChanged += (s, e) => UpdateCommandPreview();
+            rbGlobalQuality.CheckedChanged += (s, e) => UpdateCommandPreview();
+            rbBitrate.CheckedChanged += (s, e) => UpdateCommandPreview();
+            trkCRF.ValueChanged += (s, e) => { lblCRFValue.Text = trkCRF.Value.ToString(); UpdateCommandPreview(); };
+            trkCQ.ValueChanged += (s, e) => { lblCQValue.Text = trkCQ.Value.ToString(); UpdateCommandPreview(); };
+            trkGlobalQuality.ValueChanged += (s, e) => { lblGlobalQualityValue.Text = trkGlobalQuality.Value.ToString(); UpdateCommandPreview(); };
+            txtBitrate.TextChanged += (s, e) => UpdateCommandPreview();
+            chkHwaccel.CheckedChanged += (s, e) => { cboHwaccelDecoder.Enabled = chkHwaccel.Checked; if (chkHwaccel.Checked && cboHwaccelDecoder.SelectedIndex < 0) cboHwaccelDecoder.SelectedIndex = 1; UpdateCommandPreview(); };
+            cboHwaccelDecoder.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            txtCustomArgs.TextChanged += (s, e) => UpdateCommandPreview();
+            chkAudioEnabled.CheckedChanged += (s, e) => UpdateCommandPreview();
+            cboAudioCodec.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            txtAudioBitrate.TextChanged += (s, e) => UpdateCommandPreview();
+            txtAudioSamplerate.TextChanged += (s, e) => UpdateCommandPreview();
+            chkOnlyAudio.CheckedChanged += (s, e) => UpdateCommandPreview();
+            cboAudioFormat.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            cboFrameRateType.SelectedIndexChanged += (s, e) => { txtFrameRateCustom.Enabled = cboFrameRateType.SelectedIndex == 1; UpdateCommandPreview(); };
+            txtFrameRateCustom.TextChanged += (s, e) => UpdateCommandPreview();
+            chkScale.CheckedChanged += (s, e) => UpdateCommandPreview();
+            cboScaleMethod.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            txtScaleW.TextChanged += (s, e) => UpdateCommandPreview();
+            txtScaleH.TextChanged += (s, e) => UpdateCommandPreview();
+            chkCrop.CheckedChanged += (s, e) => UpdateCommandPreview();
+            txtCropW.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropH.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropLeft.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropTop.TextChanged += (s, e) => UpdateCommandPreview();
+            cboRotate.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            chkVflip.CheckedChanged += (s, e) => UpdateCommandPreview();
+            chkHflip.CheckedChanged += (s, e) => UpdateCommandPreview();
+            chkSpeed.CheckedChanged += (s, e) => UpdateCommandPreview();
+            txtSpeedFactor.TextChanged += (s, e) => UpdateCommandPreview();
+            cboDeinterlace.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            chkPixFmt.CheckedChanged += (s, e) => { cboPixFmt.Enabled = chkPixFmt.Checked; UpdateCommandPreview(); };
+            cboPixFmt.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            chkSubtitle.CheckedChanged += (s, e) => { txtSubtitlePath.Enabled = chkSubtitle.Checked; btnBrowseSubtitle.Enabled = chkSubtitle.Checked; UpdateCommandPreview(); };
+            txtSubtitlePath.TextChanged += (s, e) => UpdateCommandPreview();
+            chkTrim.CheckedChanged += (s, e) => { txtTrimStart.Enabled = chkTrim.Checked; txtTrimEnd.Enabled = chkTrim.Checked; UpdateCommandPreview(); };
+            txtTrimStart.TextChanged += (s, e) => UpdateCommandPreview();
+            txtTrimEnd.TextChanged += (s, e) => UpdateCommandPreview();
         }
 
         // ================= 业务方法 =================
@@ -932,6 +963,27 @@ namespace FFLiteGUI.Forms
             }
         }
 
+        private void LoadPresetList()
+        {
+            var mgr = new PresetManager(Path.Combine(Application.UserAppDataPath, "ffmpeg_presets.json"));
+            var presets = mgr.LoadPresets();
+            cboPresetList.Items.Clear();
+            foreach (var name in presets.Keys)
+                cboPresetList.Items.Add(name);
+            if (cboPresetList.Items.Count > 0)
+                cboPresetList.SelectedIndex = 0;
+        }
+
+        private void LoadSelectedPreset()
+        {
+            string name = cboPresetList.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(name)) return;
+            var mgr = new PresetManager(Path.Combine(Application.UserAppDataPath, "ffmpeg_presets.json"));
+            var presets = mgr.LoadPresets();
+            if (presets.TryGetValue(name, out var settings))
+                LoadSettingsIntoUI(settings);
+        }
+
         private void SavePreset()
         {
             string name = Microsoft.VisualBasic.Interaction.InputBox("请输入预设名称:", "保存预设");
@@ -941,12 +993,25 @@ namespace FFLiteGUI.Forms
             var presets = mgr.LoadPresets();
             presets[name] = settings;
             mgr.SavePresets(presets);
+            LoadPresetList();
             AppendInfo($"预设已保存: {name}");
         }
 
         private void DeletePreset()
         {
-            MessageBox.Show("预设删除功能需要预设列表控件，请自行实现或使用预设管理窗体", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            string name = cboPresetList.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(name)) return;
+            if (MessageBox.Show($"确定删除预设 '{name}' 吗？", "确认", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                var mgr = new PresetManager(Path.Combine(Application.UserAppDataPath, "ffmpeg_presets.json"));
+                var presets = mgr.LoadPresets();
+                if (presets.Remove(name))
+                {
+                    mgr.SavePresets(presets);
+                    LoadPresetList();
+                    AppendInfo($"预设已删除: {name}");
+                }
+            }
         }
 
         private void ExportAllPresets()
@@ -975,12 +1040,70 @@ namespace FFLiteGUI.Forms
                 foreach (var kv in imported)
                     presets[kv.Key] = kv.Value;
                 mgr.SavePresets(presets);
+                LoadPresetList();
                 AppendInfo($"已导入 {imported.Count} 个预设");
             }
         }
 
+        private void LoadSettingsIntoUI(VideoSettings settings)
+        {
+            cboEncoder.SelectedItem = settings.Encoder;
+            cboPreset.SelectedItem = settings.Preset;
+            if (settings.RateControlType == "crf") rbCRF.Checked = true;
+            else if (settings.RateControlType == "cq") rbCQ.Checked = true;
+            else if (settings.RateControlType == "global_quality") rbGlobalQuality.Checked = true;
+            else rbBitrate.Checked = true;
+            trkCRF.Value = settings.CrfValue;
+            trkCQ.Value = settings.CqValue;
+            trkGlobalQuality.Value = settings.GlobalQuality;
+            txtBitrate.Text = settings.BitrateVideo;
+            chkHwaccel.Checked = settings.HwaccelEnabled;
+            cboHwaccelDecoder.SelectedItem = settings.HwaccelDecoder;
+            txtCustomArgs.Text = settings.CustomArgs;
+            txtOutputDir.Text = settings.OutputDir;
+            txtOutputSuffix.Text = settings.OutputSuffix;
+            txtCustomOutputName.Text = settings.CustomOutputName;
+            cboOutputContainer.SelectedItem = settings.OutputContainer;
+            chkAudioEnabled.Checked = settings.AudioEnabled;
+            cboAudioCodec.SelectedItem = settings.AudioCodec;
+            txtAudioBitrate.Text = settings.AudioBitrate;
+            txtAudioSamplerate.Text = settings.AudioSamplerate;
+            chkOnlyAudio.Checked = settings.OnlyAudio;
+            cboAudioFormat.SelectedItem = settings.AudioFormat;
+            cboFrameRateType.SelectedIndex = settings.FrameRateType == "keep" ? 0 : 1;
+            txtFrameRateCustom.Text = settings.FrameRateCustom;
+            chkScale.Checked = settings.ScaleEnabled;
+            txtScaleW.Text = settings.ScaleWidth;
+            txtScaleH.Text = settings.ScaleHeight;
+            if (settings.ScaleMethod == "width") cboScaleMethod.SelectedIndex = 0;
+            else if (settings.ScaleMethod == "height") cboScaleMethod.SelectedIndex = 1;
+            else cboScaleMethod.SelectedIndex = 2;
+            chkCrop.Checked = settings.CropEnabled;
+            txtCropW.Text = settings.CropWidth;
+            txtCropH.Text = settings.CropHeight;
+            txtCropLeft.Text = settings.CropLeft;
+            txtCropTop.Text = settings.CropTop;
+            if (settings.Rotate == "none") cboRotate.SelectedIndex = 0;
+            else if (settings.Rotate == "90") cboRotate.SelectedIndex = 1;
+            else if (settings.Rotate == "180") cboRotate.SelectedIndex = 2;
+            else cboRotate.SelectedIndex = 3;
+            chkVflip.Checked = settings.Vflip;
+            chkHflip.Checked = settings.Hflip;
+            chkSpeed.Checked = settings.SpeedEnabled;
+            txtSpeedFactor.Text = settings.SpeedFactor.ToString();
+            cboDeinterlace.SelectedItem = settings.DeinterlaceFilter;
+            chkPixFmt.Checked = settings.PixFmtEnabled;
+            cboPixFmt.SelectedItem = settings.PixFmt;
+            chkSubtitle.Checked = settings.SubtitleEnabled;
+            txtSubtitlePath.Text = settings.SubtitlePath;
+            chkTrim.Checked = settings.TrimEnabled;
+            txtTrimStart.Text = settings.TrimStart;
+            txtTrimEnd.Text = settings.TrimEnd;
+        }
+
         private void LoadSettings()
         {
+            LoadPresetList();
         }
 
         private void MainForm_DragEnter(object sender, DragEventArgs e)

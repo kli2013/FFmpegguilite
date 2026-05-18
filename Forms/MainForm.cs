@@ -19,7 +19,7 @@ namespace FFLiteGUI.Forms
         // 布局控件
         private TableLayoutPanel mainLayout;
         private Panel leftContainer;
-        private SplitContainer splitVertical;      // 垂直分割容器（可拖拽调整上下比例）
+        private SplitContainer splitVertical;
         private Panel rightPanel;
 
         // 输入/输出组
@@ -114,9 +114,11 @@ namespace FFLiteGUI.Forms
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
 
-            // 设置 SplitContainer 初始分割位置（上部占 60%）
+            // 关键修复：所有 SplitContainer 的 MinSize 和 SplitterDistance 必须在 Load 事件中设置
             this.Load += (s, e) =>
             {
+                splitVertical.Panel1MinSize = 300;
+                splitVertical.Panel2MinSize = 200;
                 if (splitVertical.Height > 0)
                     splitVertical.SplitterDistance = (int)(splitVertical.Height * 0.6);
             };
@@ -140,10 +142,8 @@ namespace FFLiteGUI.Forms
             mainLayout.Controls.Add(rightPanel, 1, 0);
             this.Controls.Add(mainLayout);
 
-            // 左侧垂直分割容器（可拖拽调整上下区域）
+            // 左侧垂直分割容器（注意：不在此时设置 MinSize 和 SplitterDistance）
             splitVertical = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
-            splitVertical.Panel1MinSize = 300;   // 上部最小高度300px
-            splitVertical.Panel2MinSize = 200;   // 下部最小高度200px
             leftContainer.Controls.Add(splitVertical);
 
             // ========== 上半部：设置区域 ==========

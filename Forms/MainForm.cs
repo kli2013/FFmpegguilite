@@ -16,7 +16,7 @@ namespace FFLiteGUI.Forms
 {
     public class MainForm : Form
     {
-        // 所有控件字段（完整，与原版一致）
+        // 控件字段（与原版一致）
         private TextBox txtInputFile; private TextBox txtOutputDir; private TextBox txtOutputSuffix; private TextBox txtCustomOutputName;
         private ComboBox cboOutputContainer; private ComboBox cboEncoder; private ComboBox cboPreset;
         private RadioButton rbCRF; private RadioButton rbCQ; private RadioButton rbGlobalQuality; private RadioButton rbBitrate;
@@ -37,6 +37,8 @@ namespace FFLiteGUI.Forms
         private ListView lvTasks; private RichTextBox txtCommandPreview; private TextBox txtInfoLog; private TextBox txtDetailLog;
         private Button btnBrowseInput; private Button btnBrowseOutputDir; private Button btnRefreshPreview;
         private Button btnSingleTranscode;
+        private SplitContainer splitMain;
+        private SplitContainer leftVertSplit;
 
         private string _ffmpegPath;
         private List<TaskInfo> _tasks = new List<TaskInfo>();
@@ -66,14 +68,13 @@ namespace FFLiteGUI.Forms
             this.MinimumSize = new Size(1100, 700);
 
             // 主布局：左右分割
-            var splitMain = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical };
-            splitMain.SplitterDistance = 920;
+            splitMain = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical };
+            // 不在构造函数中设置 SplitterDistance，改在 Load 事件中设置
             splitMain.Panel1MinSize = 700;
             splitMain.Panel2MinSize = 400;
 
-            // ========== 左侧：垂直分割（上半部设置，下半部任务列表）==========
-            var leftVertSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
-            leftVertSplit.SplitterDistance = 520;
+            // 左侧：垂直分割（上半部设置，下半部任务列表）
+            leftVertSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
             leftVertSplit.Panel1MinSize = 400;
             leftVertSplit.Panel2MinSize = 200;
 
@@ -81,7 +82,7 @@ namespace FFLiteGUI.Forms
             var topPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 6, ColumnCount = 1, Padding = new Padding(3) };
             topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 输入/输出
             topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 参数预设
-            topPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 标签页（视频编码/滤镜/音频 + 封装合并）
+            topPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 标签页
             topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 命令预览
             topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 单文件编码按钮
             topPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // 队列控制按钮行
@@ -152,9 +153,8 @@ namespace FFLiteGUI.Forms
             presetGroup.Controls.Add(presetLayout);
             topPanel.Controls.Add(presetGroup, 0, 1);
 
-            // 3. 顶层标签页（视频转码内嵌子标签页 + 封装合并单独页）
+            // 3. 顶层标签页
             var topTab = new TabControl { Dock = DockStyle.Fill };
-            // 视频转码页（内含子标签页）
             var transcodePage = new TabPage("视频转码");
             var subTab = new TabControl { Dock = DockStyle.Fill };
             subTab.TabPages.Add(CreateVideoEncodingTab());
@@ -162,7 +162,6 @@ namespace FFLiteGUI.Forms
             subTab.TabPages.Add(CreateAudioTab());
             transcodePage.Controls.Add(subTab);
             topTab.TabPages.Add(transcodePage);
-            // 封装/合并/画中画页
             topTab.TabPages.Add(CreateMergeTab());
             topPanel.Controls.Add(topTab, 0, 2);
 
@@ -244,7 +243,7 @@ namespace FFLiteGUI.Forms
 
             this.Controls.Add(splitMain);
 
-            // 事件绑定（保证所有控件变化刷新命令预览）
+            // 事件绑定（与原版相同）
             txtInputFile.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputDir.TextChanged += (s, e) => UpdateCommandPreview();
             txtOutputSuffix.TextChanged += (s, e) => UpdateCommandPreview();
@@ -292,6 +291,17 @@ namespace FFLiteGUI.Forms
             chkTrim.CheckedChanged += (s, e) => { txtTrimStart.Enabled = chkTrim.Checked; txtTrimEnd.Enabled = chkTrim.Checked; UpdateCommandPreview(); };
             txtTrimStart.TextChanged += (s, e) => UpdateCommandPreview();
             txtTrimEnd.TextChanged += (s, e) => UpdateCommandPreview();
+
+            // 延迟设置 SplitterDistance 到 Load 事件，避免初始化异常
+            this.Load += (s, e) =>
+            {
+                // 设置主分割距离为 920 像素（大约比例合适）
+                if (splitMain.Width > 0)
+                    splitMain.SplitterDistance = Math.Min(920, splitMain.Width - splitMain.Panel2MinSize - 10);
+                // 设置左侧垂直分割距离为 520 像素
+                if (leftVertSplit.Height > 0)
+                    leftVertSplit.SplitterDistance = Math.Min(520, leftVertSplit.Height - leftVertSplit.Panel2MinSize - 10);
+            };
         }
 
         // ================= 创建各个标签页的完整代码（从您能运行的版本中复制，未作任何改动） =================

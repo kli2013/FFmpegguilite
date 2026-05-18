@@ -319,17 +319,328 @@ namespace FFLiteGUI.Forms
 
         private void CreateVideoEncodingTab()
         {
-            // 与之前提供的相同，省略重复代码（实际项目中应保留完整实现）
-            // 因篇幅省略，确保编译通过需要保留完整实现。此处为占位，实际运行时需替换为有效代码。
-            // 注意：必须包含控件创建和布局，否则会空引用。由于之前已给出完整实现，这里不再重复。
-            // 为保证编译，临时添加简单内容（实际使用时请替换为之前正确的实现）
-            videoEncodingPage.Controls.Add(new Label { Text = "编码参数区域", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
+            // 整体布局：左侧编码参数、右侧高级选项（各占50%）
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Padding = new Padding(5) };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
+        
+            // ---------- 左侧：编码参数（固定行高） ----------
+            var leftGroup = new GroupBox { Text = "编码参数", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            // 使用 TableLayoutPanel 并指定绝对行高，确保控件不被挤压
+            var leftLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4, Padding = new Padding(5) };
+            // 第0行：编码器+预设（合并为一格）高度 35
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+            // 第1行：码率控制单选按钮 高度 35
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+            // 第2行：动态面板（滑块或比特率）高度 45
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
+            // 第3行：留白填充（可选，也可不加）
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        
+            // 设置列宽
+            leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));  // 标签列
+            leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // 控件列
+        
+            // ---------- 第0行：编码器 + 预设 放在同一行 ----------
+            // 编码器标签
+            leftLayout.Controls.Add(new Label { Text = "编码器:", TextAlign = ContentAlignment.MiddleRight }, 0, 0);
+            // 编码器和预设的容器（FlowLayoutPanel 水平排列）
+            var encoderPresetPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            cboEncoder = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+            cboEncoder.Items.AddRange(new[] { "libx264", "libx265", "libvpx-vp9", "libsvtav1", "mpeg4", "libxvid", "libtheora",
+                "h264_nvenc", "hevc_nvenc", "av1_nvenc", "h264_qsv", "hevc_qsv", "av1_qsv",
+                "h264_amf", "hevc_amf", "av1_amf", "h264_vaapi", "hevc_vaapi", "copy" });
+            cboEncoder.SelectedIndex = 1;
+            encoderPresetPanel.Controls.Add(cboEncoder);
+            encoderPresetPanel.Controls.Add(new Label { Text = "预设:", TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(10, 0, 5, 0) });
+            cboPreset = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
+            cboPreset.Items.AddRange(new[] { "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "p1", "p2", "p3", "p4", "p5", "p6", "p7" });
+            cboPreset.SelectedIndex = 5;
+            encoderPresetPanel.Controls.Add(cboPreset);
+            leftLayout.Controls.Add(encoderPresetPanel, 1, 0);
+        
+            // ---------- 第1行：码率控制单选按钮 ----------
+            leftLayout.Controls.Add(new Label { Text = "码率控制:", TextAlign = ContentAlignment.MiddleRight }, 0, 1);
+            var rcPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill };
+            rbCRF = new RadioButton { Text = "CRF (CPU)", AutoSize = true, Checked = true };
+            rbCQ = new RadioButton { Text = "CQ (NVENC)", AutoSize = true };
+            rbGlobalQuality = new RadioButton { Text = "Global Quality (QSV)", AutoSize = true };
+            rbBitrate = new RadioButton { Text = "固定比特率", AutoSize = true };
+            rcPanel.Controls.AddRange(new Control[] { rbCRF, rbCQ, rbGlobalQuality, rbBitrate });
+            leftLayout.Controls.Add(rcPanel, 1, 1);
+        
+            // ---------- 第2行：动态面板（滑块/比特率） ----------
+            var dynamicPanel = new Panel { Dock = DockStyle.Fill };
+            leftLayout.Controls.Add(dynamicPanel, 1, 2);
+            // 创建各个子面板
+            trkCRF = new TrackBar { Minimum = 0, Maximum = 51, Value = 25, TickFrequency = 5, Width = 200 };
+            lblCRFValue = new Label { Text = "25", Width = 30 };
+            trkCQ = new TrackBar { Minimum = 0, Maximum = 51, Value = 35, TickFrequency = 5, Width = 200 };
+            lblCQValue = new Label { Text = "35", Width = 30 };
+            trkGlobalQuality = new TrackBar { Minimum = 1, Maximum = 51, Value = 25, TickFrequency = 5, Width = 200 };
+            lblGlobalQualityValue = new Label { Text = "25", Width = 30 };
+            txtBitrate = new TextBox { Text = "1900k", Width = 100 };
+        
+            var crfPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "CRF (0~51):" }, trkCRF, lblCRFValue }, Visible = true };
+            var cqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "CQ (0~51):" }, trkCQ, lblCQValue }, Visible = false };
+            var gqPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "Global Quality (1~51):" }, trkGlobalQuality, lblGlobalQualityValue }, Visible = false };
+            var bitPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Controls = { new Label { Text = "比特率 (kbps):" }, txtBitrate }, Visible = false };
+            dynamicPanel.Controls.AddRange(new Control[] { crfPanel, cqPanel, gqPanel, bitPanel });
+        
+            // 绑定事件（与原来相同）
+            rbCRF.CheckedChanged += (s, e) => { crfPanel.Visible = rbCRF.Checked; UpdateCommandPreview(); };
+            rbCQ.CheckedChanged += (s, e) => { cqPanel.Visible = rbCQ.Checked; UpdateCommandPreview(); };
+            rbGlobalQuality.CheckedChanged += (s, e) => { gqPanel.Visible = rbGlobalQuality.Checked; UpdateCommandPreview(); };
+            rbBitrate.CheckedChanged += (s, e) => { bitPanel.Visible = rbBitrate.Checked; UpdateCommandPreview(); };
+            trkCRF.ValueChanged += (s, e) => { lblCRFValue.Text = trkCRF.Value.ToString(); UpdateCommandPreview(); };
+            trkCQ.ValueChanged += (s, e) => { lblCQValue.Text = trkCQ.Value.ToString(); UpdateCommandPreview(); };
+            trkGlobalQuality.ValueChanged += (s, e) => { lblGlobalQualityValue.Text = trkGlobalQuality.Value.ToString(); UpdateCommandPreview(); };
+            txtBitrate.TextChanged += (s, e) => UpdateCommandPreview();
+        
+            leftGroup.Controls.Add(leftLayout);
+            layout.Controls.Add(leftGroup, 0, 0);
+        
+            // ---------- 右侧：高级选项（保持原有布局，但也可以固定高度） ----------
+            var rightGroup = new GroupBox { Text = "高级选项 (硬件解码/自定义参数)", Dock = DockStyle.Fill };
+            var rightLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(5) };
+            rightLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            rightLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        
+            var hwPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight };
+            chkHwaccel = new CheckBox { Text = "启用硬件解码", AutoSize = true };
+            cboHwaccelDecoder = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, Enabled = false };
+            cboHwaccelDecoder.Items.AddRange(HardwareDecoderHelper.GetDecoderOptions());
+            cboHwaccelDecoder.SelectedIndex = 0;
+            hwPanel.Controls.AddRange(new Control[] { chkHwaccel, cboHwaccelDecoder });
+            rightLayout.Controls.Add(hwPanel, 0, 0);
+        
+            rightLayout.Controls.Add(new Label { Text = "自定义FFmpeg参数 (例如: -tune grain -profile:v high):", AutoSize = true }, 0, 1);
+            txtCustomArgs = new TextBox { Dock = DockStyle.Fill, Multiline = true, Height = 60 };
+            rightLayout.Controls.Add(txtCustomArgs, 0, 2);
+        
+            rightGroup.Controls.Add(rightLayout);
+            layout.Controls.Add(rightGroup, 1, 0);
+        
+            videoEncodingPage.Controls.Add(layout);
+        
+            // 可选：为 videoEncodingPage 设置固定高度（用户可手动修改此处数值）
+            // 注意：如果不希望外部分割条影响，可以注释掉下面这行，让父容器决定。
+            // videoEncodingPage.AutoScroll = true;  // 如果内容超出则滚动
+            // 或者设置 MinimumSize 确保一定高度
+            videoEncodingPage.AutoScroll = true;
         }
+
 
         private void CreateVideoFiltersTab()
         {
-            videoFiltersPage.Controls.Add(new Label { Text = "滤镜区域", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
+            // 主布局：左右两列（左侧70%用于所有滤镜设置，右侧30%用于截取片段）
+            var mainLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Padding = new Padding(5) };
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+        
+            // ---------- 左侧：所有滤镜设置（垂直排列，行高自动适应） ----------
+            var leftLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 5, Padding = new Padding(3) };
+            leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));  // 标签/复选框列
+            leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // 控件列
+            // 设置行高为 AutoSize
+            for (int i = 0; i < 5; i++)
+                leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        
+            int row = 0;
+        
+            // ----- 第0行：帧率设置 + 烧录字幕（合并到一行）-----
+            // 左侧添加一个空白占位（因为这一行没有左侧标签）
+            leftLayout.Controls.Add(new Panel(), 0, row);
+            var topLinePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, WrapContents = false };
+            // 帧率部分
+            topLinePanel.Controls.Add(new Label { Text = "帧率:", TextAlign = ContentAlignment.MiddleRight });
+            cboFrameRateType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
+            cboFrameRateType.Items.AddRange(new[] { "保持源", "指定" });
+            topLinePanel.Controls.Add(cboFrameRateType);
+            txtFrameRateCustom = new TextBox { Text = "30", Width = 50, Enabled = false };
+            topLinePanel.Controls.Add(txtFrameRateCustom);
+            topLinePanel.Controls.Add(new Label { Text = "fps" });
+            // 分隔间距
+            topLinePanel.Controls.Add(new Label { Text = "    ", Width = 20 });
+            // 烧录字幕部分
+            chkSubtitle = new CheckBox { Text = "烧录字幕", AutoSize = true };
+            topLinePanel.Controls.Add(chkSubtitle);
+            txtSubtitlePath = new TextBox { Width = 200, Enabled = false };
+            topLinePanel.Controls.Add(txtSubtitlePath);
+            btnBrowseSubtitle = new Button { Text = "浏览...", Width = 60, Enabled = false };
+            btnBrowseSubtitle.Click += (sender, e) =>
+            {
+                var dlg = new OpenFileDialog();
+                dlg.Filter = "字幕文件|*.srt;*.ass;*.ssa;*.vtt";
+                if (dlg.ShowDialog() == DialogResult.OK)
+                    txtSubtitlePath.Text = PathHelper.Normalize(dlg.FileName);
+            };
+            topLinePanel.Controls.Add(btnBrowseSubtitle);
+            leftLayout.Controls.Add(topLinePanel, 1, row);
+            row++;
+        
+            // ----- 第1行：缩放设置 -----
+            leftLayout.Controls.Add(chkScale = new CheckBox { Text = "启用缩放", AutoSize = true }, 0, row);
+            var scalePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, WrapContents = false };
+            cboScaleMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
+            cboScaleMethod.Items.AddRange(new[] { "宽度(高度自动)", "高度(宽度自动)", "精确宽×高" });
+            txtScaleW = new TextBox { Width = 50 };
+            txtScaleH = new TextBox { Width = 50, Enabled = false };
+            cboScaleMethod.SelectedIndexChanged += (s, e) =>
+            {
+                int idx = cboScaleMethod.SelectedIndex;
+                txtScaleW.Enabled = (idx == 0 || idx == 2);
+                txtScaleH.Enabled = (idx == 1 || idx == 2);
+                if (idx == 0) txtScaleH.Text = "";
+                if (idx == 1) txtScaleW.Text = "";
+                UpdateCommandPreview();
+            };
+            cboScaleMethod.SelectedIndex = 0;
+            txtScaleW.Enabled = true;
+            txtScaleH.Enabled = false;
+            scalePanel.Controls.Add(cboScaleMethod);
+            scalePanel.Controls.Add(new Label { Text = "宽:" });
+            scalePanel.Controls.Add(txtScaleW);
+            scalePanel.Controls.Add(new Label { Text = "高:" });
+            scalePanel.Controls.Add(txtScaleH);
+            leftLayout.Controls.Add(scalePanel, 1, row);
+            row++;
+        
+            // ----- 第2行：裁剪设置 -----
+            leftLayout.Controls.Add(chkCrop = new CheckBox { Text = "启用裁剪", AutoSize = true }, 0, row);
+            var cropPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, WrapContents = false };
+            txtCropW = new TextBox { Width = 60 };
+            txtCropH = new TextBox { Width = 60 };
+            txtCropLeft = new TextBox { Width = 50 };
+            txtCropTop = new TextBox { Width = 50 };
+            cropPanel.Controls.Add(new Label { Text = "宽:" });
+            cropPanel.Controls.Add(txtCropW);
+            cropPanel.Controls.Add(new Label { Text = "高:" });
+            cropPanel.Controls.Add(txtCropH);
+            cropPanel.Controls.Add(new Label { Text = "左:" });
+            cropPanel.Controls.Add(txtCropLeft);
+            cropPanel.Controls.Add(new Label { Text = "上:" });
+            cropPanel.Controls.Add(txtCropTop);
+            leftLayout.Controls.Add(cropPanel, 1, row);
+            row++;
+        
+            // ----- 第3行：旋转 + 翻转 -----
+            leftLayout.Controls.Add(new Panel(), 0, row); // 占位
+            var rotateFlipPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, WrapContents = false };
+            rotateFlipPanel.Controls.Add(new Label { Text = "旋转:" });
+            cboRotate = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
+            cboRotate.Items.AddRange(new[] { "无", "90°顺时针", "180°", "90°逆时针" });
+            cboRotate.SelectedIndex = 0;
+            rotateFlipPanel.Controls.Add(cboRotate);
+            rotateFlipPanel.Controls.Add(new Label { Text = "    翻转:" });
+            chkVflip = new CheckBox { Text = "上下翻转", AutoSize = true };
+            chkHflip = new CheckBox { Text = "左右翻转", AutoSize = true };
+            rotateFlipPanel.Controls.Add(chkVflip);
+            rotateFlipPanel.Controls.Add(chkHflip);
+            leftLayout.Controls.Add(rotateFlipPanel, 1, row);
+            row++;
+        
+            // ----- 第4行：变速 + 反交错 + 像素格式 -----
+            leftLayout.Controls.Add(new Panel(), 0, row); // 占位
+            var miscPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, WrapContents = false };
+            // 变速
+            chkSpeed = new CheckBox { Text = "启用变速", AutoSize = true };
+            miscPanel.Controls.Add(chkSpeed);
+            txtSpeedFactor = new TextBox { Text = "1.0", Width = 60 };
+            miscPanel.Controls.Add(new Label { Text = "速度倍数:" });
+            miscPanel.Controls.Add(txtSpeedFactor);
+            miscPanel.Controls.Add(new Label { Text = "    " });
+            // 反交错
+            miscPanel.Controls.Add(new Label { Text = "反交错:" });
+            cboDeinterlace = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100 };
+            cboDeinterlace.Items.AddRange(new[] { "none", "bwdif", "yadif", "kerndeint", "pp=lb", "fieldorder" });
+            cboDeinterlace.SelectedIndex = 0;
+            miscPanel.Controls.Add(cboDeinterlace);
+            miscPanel.Controls.Add(new Label { Text = "    " });
+            // 像素格式
+            chkPixFmt = new CheckBox { Text = "指定像素格式", AutoSize = true };
+            miscPanel.Controls.Add(chkPixFmt);
+            cboPixFmt = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100, Enabled = false };
+            cboPixFmt.Items.AddRange(new[] { "yuv420p", "yuv422p", "yuv444p", "yuv420p10le", "yuv422p10le", "yuv444p10le", "p010le", "nv12" });
+            miscPanel.Controls.Add(cboPixFmt);
+            leftLayout.Controls.Add(miscPanel, 1, row);
+            row++;
+        
+            // 将左侧布局添加到主布局
+            mainLayout.Controls.Add(leftLayout, 0, 0);
+        
+            // ---------- 右侧：截取片段（跨所有行，垂直居中） ----------
+            var trimGroup = new GroupBox { Text = "截取片段", Dock = DockStyle.Fill, Padding = new Padding(5) };
+            var trimLayout = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1, Padding = new Padding(5) };
+            trimLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            trimLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            trimLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        
+            chkTrim = new CheckBox { Text = "启用截取片段", AutoSize = true };
+            trimLayout.Controls.Add(chkTrim, 0, 0);
+            var startPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight };
+            startPanel.Controls.Add(new Label { Text = "开始:" });
+            txtTrimStart = new TextBox { Width = 100, Enabled = false };
+            startPanel.Controls.Add(txtTrimStart);
+            trimLayout.Controls.Add(startPanel, 0, 1);
+            var endPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight };
+            endPanel.Controls.Add(new Label { Text = "结束:" });
+            txtTrimEnd = new TextBox { Width = 100, Enabled = false };
+            endPanel.Controls.Add(txtTrimEnd);
+            trimLayout.Controls.Add(endPanel, 0, 2);
+        
+            chkTrim.CheckedChanged += (s, e) =>
+            {
+                bool enabled = chkTrim.Checked;
+                txtTrimStart.Enabled = enabled;
+                txtTrimEnd.Enabled = enabled;
+                UpdateCommandPreview();
+            };
+            trimGroup.Controls.Add(trimLayout);
+            mainLayout.Controls.Add(trimGroup, 1, 0);
+        
+            videoFiltersPage.Controls.Add(mainLayout);
+        
+            // 辅助事件绑定（保持原有功能）
+            chkSubtitle.CheckedChanged += (s, e) =>
+            {
+                bool enabled = chkSubtitle.Checked;
+                txtSubtitlePath.Enabled = enabled;
+                btnBrowseSubtitle.Enabled = enabled;
+                UpdateCommandPreview();
+            };
+            chkPixFmt.CheckedChanged += (s, e) =>
+            {
+                cboPixFmt.Enabled = chkPixFmt.Checked;
+                UpdateCommandPreview();
+            };
+            chkScale.CheckedChanged += (s, e) => UpdateCommandPreview();
+            chkCrop.CheckedChanged += (s, e) => UpdateCommandPreview();
+            chkSpeed.CheckedChanged += (s, e) => UpdateCommandPreview();
+            cboFrameRateType.SelectedIndexChanged += (s, e) =>
+            {
+                txtFrameRateCustom.Enabled = cboFrameRateType.SelectedIndex == 1;
+                UpdateCommandPreview();
+            };
+            txtFrameRateCustom.TextChanged += (s, e) => UpdateCommandPreview();
+            txtScaleW.TextChanged += (s, e) => UpdateCommandPreview();
+            txtScaleH.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropW.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropH.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropLeft.TextChanged += (s, e) => UpdateCommandPreview();
+            txtCropTop.TextChanged += (s, e) => UpdateCommandPreview();
+            cboRotate.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            chkVflip.CheckedChanged += (s, e) => UpdateCommandPreview();
+            chkHflip.CheckedChanged += (s, e) => UpdateCommandPreview();
+            txtSpeedFactor.TextChanged += (s, e) => UpdateCommandPreview();
+            cboDeinterlace.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            cboPixFmt.SelectedIndexChanged += (s, e) => UpdateCommandPreview();
+            txtSubtitlePath.TextChanged += (s, e) => UpdateCommandPreview();
+            txtTrimStart.TextChanged += (s, e) => UpdateCommandPreview();
+            txtTrimEnd.TextChanged += (s, e) => UpdateCommandPreview();
         }
+
 
         private void CreateAudioTab()
         {

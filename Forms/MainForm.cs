@@ -123,7 +123,7 @@ namespace FFLiteGUI.Forms
         // 任务列表
         private ListView lvTasks;
 
-        // 封装/合并/画中画页（占位，后续可扩展）
+        // 封装/合并/画中画页（占位）
         private TabPage mergePage;
 
         // 业务字段
@@ -146,11 +146,17 @@ namespace FFLiteGUI.Forms
             this.DragEnter += MainForm_DragEnter;
             this.DragDrop += MainForm_DragDrop;
 
-            // 调整垂直分割比例：上半部设置区域占 60%，下半部任务列表占 40%
+            // 延迟设置分割容器的尺寸，避免初始化异常
             this.Load += (s, e) =>
             {
-                if (leftVertSplit.Height > 200)
+                // 设置最小尺寸
+                leftVertSplit.Panel1MinSize = 400;
+                leftVertSplit.Panel2MinSize = 200;
+                // 设置分割位置（上半部60%，下半部40%）
+                if (leftVertSplit.Height > 0)
                     leftVertSplit.SplitterDistance = (int)(leftVertSplit.Height * 0.6);
+                else
+                    leftVertSplit.SplitterDistance = 400; // 默认值
             };
         }
 
@@ -173,10 +179,9 @@ namespace FFLiteGUI.Forms
             mainLayout.Controls.Add(rightPanel, 1, 0);
             this.Controls.Add(mainLayout);
 
-            // ========== 左侧：垂直分割（上半部设置，下半部任务列表）==========
+            // ========== 左侧：垂直分割（上半部设置，下半部任务列表） ==========
+            // 注意：此处不设置 PanelMinSize 和 SplitterDistance，避免初始化异常
             leftVertSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
-            leftVertSplit.Panel1MinSize = 400;
-            leftVertSplit.Panel2MinSize = 200;
             leftPanel.Controls.Add(leftVertSplit);
 
             // ===== 上半部分：设置区域，使用 TableLayoutPanel =====
